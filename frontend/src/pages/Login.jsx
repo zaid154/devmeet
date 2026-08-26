@@ -106,7 +106,9 @@ const Login = ({ initialMode }) => {
         setError(res.data.message || 'Failed to send verification code');
       }
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to send verification email. Please try again.');
+      console.warn("Backend send-otp warning:", err?.message);
+      setResendCooldown(60);
+      setStep('email-otp');
     } finally {
       setLoading(false);
     }
