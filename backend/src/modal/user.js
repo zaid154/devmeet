@@ -53,7 +53,7 @@ const userSchema = new Schema({
         type: String,
         validate: {
             validator: function (value) {
-                if (value && !value.startsWith('/') && !validator.isURL(value)) {
+                if (value && !value.startsWith('/') && !value.startsWith('data:') && !validator.isURL(value)) {
                     throw new Error("Please provide correct image url")
                 }
             }
@@ -70,7 +70,7 @@ const userSchema = new Schema({
         type: String,
         validate: {
             validator: function (value) {
-                if (value && !value.startsWith('/') && !validator.isURL(value)) {
+                if (value && !value.startsWith('/') && !value.startsWith('data:') && !validator.isURL(value)) {
                     throw new Error("Please provide correct photo url")
                 }
             }
@@ -86,7 +86,7 @@ const userSchema = new Schema({
     }],
     relationshipGoal: {
         type: String,
-        enum: ["long-term", "long-term-open", "short-term", "new-friends", "figuring-out", ""],
+        enum: ["long-term", "long-term-open", "short-term", "short-term-open", "new-friends", "figuring-out", ""],
         default: ""
     },
     lookingFor: {

@@ -490,54 +490,62 @@ router.post('/onboarding', async (req, res) => {
             });
         }
 
-        const existingUser = await userModel.findOne({ email: email.toLowerCase().trim() });
-        if (existingUser) {
-            return res.status(400).send({
-                status: false,
-                message: "An account with this email already exists."
-            });
-        }
-
-        const rawPassword = password || `Pass@${Math.floor(1000 + Math.random() * 9000)}`;
-        const hashedPassword = await bcrypt.hash(rawPassword, 10);
-
         const allPhotos = Array.isArray(photos) && photos.length ? photos : profileImage ? [profileImage] : [];
         const mainImage = profileImage || allPhotos[0] || '';
 
-        const newUser = await userModel.create({
-            firstName,
-            lastName: lastName || '',
-            email: email.toLowerCase().trim(),
-            password: hashedPassword,
-            gender: gender || 'male',
-            age: Number(age) || 24,
-            phone: phone || '',
-            job: job || 'Software Engineer',
-            location: location || 'India',
-            bio: bio || 'Excited to connect on DevMeet!',
-            interests: Array.isArray(interests) ? interests : ['Coding', 'Tech'],
-            skills: Array.isArray(skills) ? skills : ['JavaScript'],
-            photos: allPhotos,
-            profileImage: mainImage,
-            relationshipGoal: relationshipGoal || 'long-term',
-            accountStatus: 'active',
-            isVerified: false,
-            verificationStatus: 'unverified'
-        });
+        let targetUser = await userModel.findOne({ email: email.toLowerCase().trim() });
+        if (targetUser) {
+            targetUser.firstName = firstName.trim();
+            if (lastName) targetUser.lastName = lastName.trim();
+            if (gender) targetUser.gender = gender;
+            if (age) targetUser.age = Number(age);
+            if (phone) targetUser.phone = phone.trim();
+            if (allPhotos.length) targetUser.photos = allPhotos;
+            if (mainImage) targetUser.profileImage = mainImage;
+            if (relationshipGoal) targetUser.relationshipGoal = relationshipGoal;
+            if (interests && Array.isArray(interests)) targetUser.interests = interests;
+            if (skills && Array.isArray(skills)) targetUser.skills = skills;
+            await targetUser.save();
+        } else {
+            const rawPassword = password || `Pass@${Math.floor(1000 + Math.random() * 9000)}`;
+            const hashedPassword = await bcrypt.hash(rawPassword, 10);
 
-        const token = await newUser.getToken();
+            targetUser = await userModel.create({
+                firstName: firstName.trim(),
+                lastName: lastName ? lastName.trim() : '',
+                email: email.toLowerCase().trim(),
+                password: hashedPassword,
+                gender: gender || 'male',
+                age: Number(age) || 24,
+                phone: phone ? phone.trim() : '',
+                job: job || 'Software Engineer',
+                location: location || 'India',
+                bio: bio || 'Excited to connect on DevMeet!',
+                interests: Array.isArray(interests) && interests.length ? interests : ['Coding', 'Tech'],
+                skills: Array.isArray(skills) && skills.length ? skills : ['JavaScript'],
+                photos: allPhotos,
+                profileImage: mainImage,
+                relationshipGoal: relationshipGoal || 'long-term',
+                accountStatus: 'active',
+                isVerified: false,
+                verificationStatus: 'unverified'
+            });
+        }
+
+        const token = await targetUser.getToken();
         res.cookie('token', token, { httpOnly: false, sameSite: 'lax' });
 
         res.send({
             status: true,
             message: "Onboarding completed successfully! 🎉",
             token: token,
-            data: newUser
+            data: targetUser
         });
     } catch (error) {
+        console.error('Onboarding error:', error);
         res.status(500).send({
             status: false,
-            message: error.message
+            message: error.message || "Failed to complete onboarding"
         });
     }
 });
