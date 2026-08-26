@@ -383,19 +383,18 @@ router.post('/send-otp', async (req, res) => {
             try {
                 const nodemailer = require('nodemailer');
                 const transporter = nodemailer.createTransport({
-                    host: process.env.SMTP_HOST || 'smtp.gmail.com',
-                    port: Number(process.env.SMTP_PORT) || 587,
-                    secure: process.env.SMTP_SECURE === 'true',
+                    service: 'gmail',
                     auth: {
                         user: process.env.SMTP_USER || 'trendykart.app@gmail.com',
                         pass: process.env.SMTP_PASS || 'ziqyiszqfggqgrjm'
                     }
                 });
 
-                await transporter.sendMail({
+                const mailOptions = {
                     from: process.env.SMTP_FROM || `"DevMeet" <${process.env.SMTP_USER || 'trendykart.app@gmail.com'}>`,
                     to: cleanIdentifier,
                     subject: `🔥 Your DevMeet Verification Code is ${otp}`,
+                    text: `Your DevMeet verification code is: ${otp}. It expires in 10 minutes.`,
                     html: `
                         <div style="font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 500px; margin: auto; padding: 32px 24px; border: 1px solid #f0f0f0; border-radius: 24px; background: #ffffff; color: #111418;">
                             <div style="text-align: center; margin-bottom: 24px;">
@@ -419,10 +418,12 @@ router.post('/send-otp', async (req, res) => {
                             </p>
                         </div>
                     `
-                });
-                console.log(`[AUTH OTP] Email successfully sent to ${cleanIdentifier}`);
+                };
+
+                const info = await transporter.sendMail(mailOptions);
+                console.log(`[AUTH OTP] Email successfully sent to ${cleanIdentifier}. Response: ${info.response}`);
             } catch (mailErr) {
-                console.error(`[AUTH OTP] Nodemailer send error:`, mailErr.message);
+                console.error(`[AUTH OTP] Nodemailer send error:`, mailErr);
             }
         }
 
