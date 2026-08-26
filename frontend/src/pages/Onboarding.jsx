@@ -42,15 +42,8 @@ const Onboarding = () => {
   const [sexualOrientation, setSexualOrientation] = useState('');
   const [showOrientationModal, setShowOrientationModal] = useState(false);
 
-  // 6 Photos slots
-  const [photos, setPhotos] = useState([
-    'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=600&q=80',
-    '',
-    '',
-    '',
-    '',
-    ''
-  ]);
+  // 6 Photos slots (all empty by default for user upload)
+  const [photos, setPhotos] = useState(['', '', '', '', '', '']);
   const [activePhotoSlot, setActivePhotoSlot] = useState(null);
   const [adjustingPhoto, setAdjustingPhoto] = useState(null);
   const [photoZoom, setPhotoZoom] = useState(1);
