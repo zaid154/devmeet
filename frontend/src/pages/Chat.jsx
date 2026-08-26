@@ -31,15 +31,17 @@ const DEFAULT_AVATAR = 'https://ui-avatars.com/api/?background=fe3c72&color=fff&
 const Avatar = ({ src, name, size = 'w-11 h-11', className = '', online }) => {
   const fallback = `${DEFAULT_AVATAR}${encodeURIComponent(name || 'U')}`;
   return (
-    <div className={`relative shrink-0 ${className}`}>
-      <img
-        src={src || fallback}
-        alt={name || 'User'}
-        className={`${size} rounded-full object-cover`}
-        onError={(e) => { e.target.src = fallback; }}
-      />
+    <div className={`relative shrink-0 ${size} ${className}`}>
+      <div className="w-full h-full rounded-full overflow-hidden flex items-center justify-center bg-gray-200 border border-black/10 shadow-2xs">
+        <img
+          src={src || fallback}
+          alt={name || 'User'}
+          className="w-full h-full object-cover object-center aspect-square"
+          onError={(e) => { e.target.src = fallback; }}
+        />
+      </div>
       {online && (
-        <span className="absolute bottom-0 right-0 w-3 h-3 bg-emerald-500 border-2 rounded-full" style={{ borderColor: 'var(--bg-card)' }} />
+        <span className="absolute bottom-0 right-0 w-3 h-3 bg-emerald-500 border-2 rounded-full z-10" style={{ borderColor: 'var(--bg-card)' }} />
       )}
     </div>
   );
@@ -550,8 +552,12 @@ const Chat = () => {
 
                   {/* Receiver Avatar */}
                   {!isMine && (
-                    <div className="w-7 shrink-0">
-                      {showAvatar && <Avatar src={activeUser.profileImage} name={activeUser.firstName} size="w-7 h-7" />}
+                    <div className="w-7 h-7 shrink-0 mb-1">
+                      {showAvatar ? (
+                        <Avatar src={activeUser.profileImage} name={activeUser.firstName} size="w-7 h-7" />
+                      ) : (
+                        <div className="w-7 h-7" />
+                      )}
                     </div>
                   )}
 
