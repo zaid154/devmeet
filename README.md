@@ -58,8 +58,8 @@
 
 ### 1️⃣ Clone the Repository
 ```bash
-git clone https://github.com/zaid154/developer-meetups.git
-cd developer-meetups
+git clone https://github.com/zaid154/Devmeet.git
+cd Devmeet
 ```
 
 ### 2️⃣ Install All Dependencies

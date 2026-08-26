@@ -1,7 +1,11 @@
 {
-  "name": "developer-meetups",
+  "name": "devmeet",
   "version": "1.0.0",
-  "description": "Developer-Meetups MERN Fullstack Application",
+  "description": "DevMeet — Dating & Networking for Developers (MERN Fullstack Platform)",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/zaid154/Devmeet.git"
+  },
   "private": true,
   "scripts": {
     "postinstall": "npm run install:all",
