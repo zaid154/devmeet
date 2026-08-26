@@ -18,13 +18,71 @@ const POPULAR_GIFS = [
   'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExeGJ0cm9tdmYyZWh5MW1mMWl4anRqczIydzdrOW9ocG5xZHA1MnN2YSZlcD12MV9naWZzX3NlYXJjaCZjdD1n/3oz8xAFtqoOUUrsh7W/giphy.gif'
 ];
 
-const ICEBREAKERS = [
-  "Tabs or Spaces?",
-  "What is your dream tech stack?",
-  "Coffee ☕ or Energy Drink ⚡ during late night deploys?",
-  "What project are you most proud of?",
-  "Dark theme or Light theme?"
-];
+// Clean Vector SVG Icons
+const PhoneIcon = ({ className = "w-4 h-4" }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
+  </svg>
+);
+
+const VideoIcon = ({ className = "w-4 h-4" }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <polygon points="23 7 16 12 23 17 23 7" />
+    <rect x="1" y="5" width="15" height="14" rx="3" ry="3" />
+  </svg>
+);
+
+const MoreVerticalIcon = ({ className = "w-4 h-4" }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="currentColor">
+    <circle cx="12" cy="5" r="1.5" />
+    <circle cx="12" cy="12" r="1.5" />
+    <circle cx="12" cy="19" r="1.5" />
+  </svg>
+);
+
+const CameraIcon = ({ className = "w-4 h-4" }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+    <circle cx="12" cy="13" r="4" />
+  </svg>
+);
+
+const MicIcon = ({ className = "w-4 h-4" }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
+    <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+    <line x1="12" y1="19" x2="12" y2="23" />
+    <line x1="8" y1="23" x2="16" y2="23" />
+  </svg>
+);
+
+const SmileFaceIcon = ({ className = "w-4 h-4" }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="12" cy="12" r="10" />
+    <path d="M8 14s1.5 2 4 2 4-2 4-2" />
+    <circle cx="9" cy="9" r="1" fill="currentColor" />
+    <circle cx="15" cy="9" r="1" fill="currentColor" />
+  </svg>
+);
+
+const SendPlaneIcon = ({ className = "w-4 h-4" }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="currentColor">
+    <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
+  </svg>
+);
+
+const ShieldSecurityIcon = ({ className = "w-4 h-4" }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+  </svg>
+);
+
+const SearchIcon = ({ className = "w-4 h-4" }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="11" cy="11" r="8" />
+    <line x1="21" y1="21" x2="16.65" y2="16.65" />
+  </svg>
+);
 
 const DEFAULT_AVATAR = 'https://ui-avatars.com/api/?background=fe3c72&color=fff&bold=true&size=128&name=';
 
@@ -343,7 +401,9 @@ const Chat = () => {
 
           {/* Search */}
           <div className="relative">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm" style={{ color: 'var(--text-muted)' }}>🔍</span>
+            <span className="absolute left-3.5 top-1/2 -translate-y-1/2" style={{ color: 'var(--text-muted)' }}>
+              <SearchIcon className="w-3.5 h-3.5" />
+            </span>
             <input
               type="text"
               value={searchQuery}
@@ -357,9 +417,11 @@ const Chat = () => {
 
         {/* Safety Banner */}
         <div className="px-4 py-3 flex items-center space-x-2.5 border-b" style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-secondary)' }}>
-          <span className="text-base">🛡️</span>
+          <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: 'var(--accent-light)', color: 'var(--accent)' }}>
+            <ShieldSecurityIcon className="w-4 h-4" />
+          </div>
           <p className="text-[11px] font-semibold leading-snug" style={{ color: 'var(--text-muted)' }}>
-            Stay safe! Never share personal info or send money to someone you haven't met.
+            Stay safe! Never share sensitive personal info or send money to someone you haven't met.
           </p>
         </div>
 
@@ -472,24 +534,31 @@ const Chat = () => {
             <div className="flex items-center space-x-1.5 sm:space-x-2">
               <button
                 onClick={() => startCall('audio')}
-                className="w-9 h-9 rounded-full flex items-center justify-center text-sm transition-colors cursor-pointer"
-                style={{ backgroundColor: 'var(--bg-input)', color: 'var(--text-secondary)' }}
+                className="w-9 h-9 rounded-full flex items-center justify-center transition-colors cursor-pointer hover:opacity-80 shadow-2xs border"
+                style={{ backgroundColor: 'var(--bg-input)', borderColor: 'var(--border-color)', color: 'var(--text-primary)' }}
                 title="Voice Call"
-              >📞</button>
+              >
+                <PhoneIcon className="w-4 h-4" />
+              </button>
               <button
                 onClick={() => startCall('video')}
-                className="w-9 h-9 rounded-full flex items-center justify-center text-sm transition-colors cursor-pointer"
-                style={{ backgroundColor: 'var(--bg-input)', color: 'var(--text-secondary)' }}
+                className="w-9 h-9 rounded-full flex items-center justify-center transition-colors cursor-pointer hover:opacity-80 shadow-2xs border"
+                style={{ backgroundColor: 'var(--bg-input)', borderColor: 'var(--border-color)', color: 'var(--text-primary)' }}
                 title="Video Call"
-              >📹</button>
+              >
+                <VideoIcon className="w-4 h-4" />
+              </button>
 
               {/* Safety Menu */}
               <div className="relative" ref={safetyMenuRef}>
                 <button
                   onClick={() => setShowSafetyMenu(!showSafetyMenu)}
-                  className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold cursor-pointer transition-colors"
-                  style={{ backgroundColor: 'var(--bg-input)', color: 'var(--text-secondary)' }}
-                >•••</button>
+                  className="w-9 h-9 rounded-full flex items-center justify-center cursor-pointer transition-colors hover:opacity-80 shadow-2xs border"
+                  style={{ backgroundColor: 'var(--bg-input)', borderColor: 'var(--border-color)', color: 'var(--text-primary)' }}
+                  title="More options"
+                >
+                  <MoreVerticalIcon className="w-4 h-4" />
+                </button>
                 {showSafetyMenu && (
                   <div className="absolute right-0 top-full mt-1.5 w-44 rounded-2xl p-2 text-xs font-bold z-30 border shadow-lg" style={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border-color)' }}>
                     <Link to={`/profile/${activeUser._id}`} className="w-full text-left p-2.5 rounded-xl cursor-pointer flex items-center space-x-2 transition-colors block" style={{ color: 'var(--text-primary)' }}>
@@ -666,19 +735,36 @@ const Chat = () => {
                 {/* Hidden file input */}
                 <input type="file" ref={fileInputRef} onChange={handleImageSelect} accept="image/*" className="hidden" />
 
-                {/* Attach */}
-                <button type="button" onClick={() => fileInputRef.current?.click()} className="w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center transition-colors cursor-pointer shrink-0" style={{ backgroundColor: 'var(--bg-input)', color: 'var(--text-secondary)' }} title="Upload Image">
-                  📷
+                {/* Attach Photo */}
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center transition-colors cursor-pointer shrink-0 hover:opacity-80 border"
+                  style={{ backgroundColor: 'var(--bg-input)', borderColor: 'var(--border-color)', color: 'var(--text-secondary)' }}
+                  title="Upload Image"
+                >
+                  <CameraIcon className="w-4 h-4" />
                 </button>
 
                 {/* GIF */}
-                <button type="button" onClick={() => { setShowGifPicker(!showGifPicker); setShowEmoji(false); }} className="hidden sm:flex px-2.5 h-9 sm:h-10 rounded-full items-center justify-center text-[10px] font-black transition-colors cursor-pointer shrink-0" style={{ backgroundColor: 'var(--bg-input)', color: 'var(--text-secondary)' }}>
+                <button
+                  type="button"
+                  onClick={() => { setShowGifPicker(!showGifPicker); setShowEmoji(false); }}
+                  className="hidden sm:flex px-2.5 h-9 sm:h-10 rounded-full items-center justify-center text-[11px] font-black tracking-wider transition-colors cursor-pointer shrink-0 hover:opacity-80 border"
+                  style={{ backgroundColor: 'var(--bg-input)', borderColor: 'var(--border-color)', color: 'var(--text-secondary)' }}
+                >
                   GIF
                 </button>
 
                 {/* Emoji */}
-                <button type="button" onClick={() => { setShowEmoji(!showEmoji); setShowGifPicker(false); }} className="w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center transition-colors cursor-pointer shrink-0" style={{ backgroundColor: 'var(--bg-input)', color: 'var(--text-secondary)' }}>
-                  😊
+                <button
+                  type="button"
+                  onClick={() => { setShowEmoji(!showEmoji); setShowGifPicker(false); }}
+                  className="w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center transition-colors cursor-pointer shrink-0 hover:opacity-80 border"
+                  style={{ backgroundColor: 'var(--bg-input)', borderColor: 'var(--border-color)', color: 'var(--text-secondary)' }}
+                  title="Insert Emoji"
+                >
+                  <SmileFaceIcon className="w-4 h-4" />
                 </button>
 
                 {/* Text Input */}
@@ -691,14 +777,26 @@ const Chat = () => {
                   style={{ backgroundColor: 'var(--bg-input)', borderColor: 'var(--border-color)', color: 'var(--text-primary)' }}
                 />
 
-                {/* Voice */}
-                <button type="button" onClick={startVoiceRecording} className="w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center transition-colors cursor-pointer shrink-0" style={{ backgroundColor: 'var(--bg-input)', color: 'var(--text-secondary)' }} title="Voice Note">
-                  🎤
+                {/* Voice Note */}
+                <button
+                  type="button"
+                  onClick={startVoiceRecording}
+                  className="w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center transition-colors cursor-pointer shrink-0 hover:opacity-80 border"
+                  style={{ backgroundColor: 'var(--bg-input)', borderColor: 'var(--border-color)', color: 'var(--text-secondary)' }}
+                  title="Voice Note"
+                >
+                  <MicIcon className="w-4 h-4" />
                 </button>
 
                 {/* Send */}
-                <button type="submit" disabled={!inputMessage.trim()} className="h-9 sm:h-10 px-4 sm:px-5 rounded-full text-xs font-bold shadow-md transition-all cursor-pointer disabled:opacity-40 text-white shrink-0" style={{ backgroundColor: 'var(--accent)' }}>
-                  Send
+                <button
+                  type="submit"
+                  disabled={!inputMessage.trim()}
+                  className="h-9 sm:h-10 px-4 sm:px-5 rounded-full text-xs font-bold shadow-md transition-all cursor-pointer disabled:opacity-40 text-white shrink-0 flex items-center space-x-1.5"
+                  style={{ backgroundColor: 'var(--accent)' }}
+                >
+                  <span>Send</span>
+                  <SendPlaneIcon className="w-3.5 h-3.5" />
                 </button>
               </form>
             )}
