@@ -73,6 +73,23 @@ const Login = ({ initialMode }) => {
     }
   };
 
+  // Handle Full 6-digit OTP Paste
+  const handleOtpPaste = (e, isPhone = false) => {
+    e.preventDefault();
+    const pasted = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6);
+    if (!pasted) return;
+    const setArray = isPhone ? setPhoneOtp : setEmailOtp;
+    const newOtp = Array(6).fill('');
+    pasted.split('').forEach((d, i) => {
+      if (i < 6) newOtp[i] = d;
+    });
+    setArray(newOtp);
+    const nextIdx = Math.min(pasted.length, 5);
+    if (otpInputs.current[nextIdx]) {
+      otpInputs.current[nextIdx].focus();
+    }
+  };
+
   const handleOtpKeyDown = (index, e, isPhone = false) => {
     const currentArray = isPhone ? phoneOtp : emailOtp;
     if (e.key === 'Backspace' && !currentArray[index] && index > 0) {
@@ -432,8 +449,9 @@ const Login = ({ initialMode }) => {
                   ref={(el) => (otpInputs.current[idx] = el)}
                   type="text"
                   inputMode="numeric"
-                  maxLength={1}
+                  maxLength={6}
                   value={digit}
+                  onPaste={(e) => handleOtpPaste(e, false)}
                   onChange={(e) => handleOtpChange(idx, e.target.value, false)}
                   onKeyDown={(e) => handleOtpKeyDown(idx, e, false)}
                   autoFocus={idx === 0}
@@ -544,8 +562,9 @@ const Login = ({ initialMode }) => {
                   ref={(el) => (otpInputs.current[idx] = el)}
                   type="text"
                   inputMode="numeric"
-                  maxLength={1}
+                  maxLength={6}
                   value={digit}
+                  onPaste={(e) => handleOtpPaste(e, true)}
                   onChange={(e) => handleOtpChange(idx, e.target.value, true)}
                   onKeyDown={(e) => handleOtpKeyDown(idx, e, true)}
                   autoFocus={idx === 0}
