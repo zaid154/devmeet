@@ -1,15 +1,17 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import { useSocket } from '../context/SocketContext';
 import { FlameIcon } from '../components/Icons';
 import { BASE_URL } from '../utils/constants';
+import Settings from './Settings';
 
 const Feed = () => {
   const { user } = useAuth();
   const { socket, unreadNotifications, setUnreadNotifications } = useSocket();
   const navigate = useNavigate();
+  const location = useLocation();
 
   // Feed State
   const [users, setUsers] = useState([]);
@@ -30,7 +32,8 @@ const Feed = () => {
   const [requestsList, setRequestsList] = useState([]);
   const [conversations, setConversations] = useState([]);
 
-  // Notifications Drawer in Feed
+  // Modals in Feed
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [showNotificationsDrawer, setShowNotificationsDrawer] = useState(false);
   const [notificationsList, setNotificationsList] = useState([]);
   const [loadingNotifications, setLoadingNotifications] = useState(false);
@@ -450,7 +453,7 @@ const Feed = () => {
               )}
             </button>
             <button 
-              onClick={() => navigate('/settings')}
+              onClick={() => setShowSettingsModal(true)}
               className="w-9 h-9 rounded-full bg-black/35 hover:bg-black/55 text-white flex items-center justify-center text-sm font-bold shadow-xs cursor-pointer hover:scale-105 transition-transform"
               title="Safety & Settings"
             >
@@ -687,12 +690,12 @@ const Feed = () => {
               >
                 Reset Feed
               </button>
-              <Link
-                to="/settings"
-                className="w-full sm:w-auto bg-gray-100 hover:bg-gray-200 text-gray-800 font-bold px-6 py-3 rounded-full text-xs uppercase tracking-wider transition-all text-center"
+              <button
+                onClick={() => setShowSettingsModal(true)}
+                className="w-full sm:w-auto bg-gray-100 hover:bg-gray-200 text-gray-800 font-bold px-6 py-3 rounded-full text-xs uppercase tracking-wider transition-all text-center cursor-pointer hover:scale-105"
               >
                 Edit Preferences
-              </Link>
+              </button>
             </div>
           </div>
         ) : (
@@ -1091,6 +1094,20 @@ const Feed = () => {
 
           </div>
         </div>
+      )}
+
+
+      {/* ============================================================ */}
+      {/* 5. IN-FEED SETTINGS & PREFERENCES MODAL */}
+      {/* ============================================================ */}
+      {showSettingsModal && (
+        <Settings
+          isModal={true}
+          onClose={() => setShowSettingsModal(false)}
+          onSaved={() => {
+            fetchFeed();
+          }}
+        />
       )}
 
     </div>

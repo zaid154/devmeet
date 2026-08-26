@@ -103,7 +103,7 @@ function AppContent() {
           <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
           <Route path="/profile/edit" element={<ProtectedRoute><EditProfile /></ProtectedRoute>} />
           <Route path="/profile/:id" element={<ProtectedRoute><ProfileDetails /></ProtectedRoute>} />
-          <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
+          <Route path="/settings" element={<Navigate to="/feed?open=settings" replace />} />
           
           {/* Auth Modals & Full Onboarding Pages */}
           <Route path="/login" element={isAuthenticated ? <Navigate to="/feed" replace /> : <><Home /><Login initialMode="login" /></>} />

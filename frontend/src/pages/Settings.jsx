@@ -3,7 +3,7 @@ import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import { BASE_URL } from '../utils/constants';
 
-const Settings = () => {
+const Settings = ({ isModal = false, onClose, onSaved }) => {
   const { user, logout, updateUser } = useAuth();
   const [activeTab, setActiveTab] = useState('preferences');
   const [loading, setLoading] = useState(false);
@@ -81,6 +81,10 @@ const Settings = () => {
           updateUser(res.data.data);
         }
         setMsg({ type: 'success', text: 'Dating preferences updated successfully! 🎉' });
+        if (onSaved) onSaved();
+        if (isModal && onClose) {
+          setTimeout(() => onClose(), 900);
+        }
       } else {
         setMsg({ type: 'error', text: 'Failed to update settings' });
       }
@@ -111,11 +115,20 @@ const Settings = () => {
     }
   };
 
-  return (
-    <div className="min-h-screen bg-gray-50 text-gray-900 pt-20 pb-16 px-4 font-sans">
-      <div className="max-w-3xl mx-auto">
-        <h1 className="text-2xl sm:text-3xl font-black mb-2 tracking-tight">App Settings</h1>
-        <p className="text-sm text-gray-500 mb-6">Manage discovery preferences, privacy, and account security</p>
+  const content = (
+    <div className={`${isModal ? 'p-6 sm:p-8 max-h-[85vh] overflow-y-auto' : 'max-w-3xl mx-auto'}`}>
+      <div className="flex items-center justify-between mb-2">
+        <h1 className="text-2xl sm:text-3xl font-black tracking-tight">App Settings</h1>
+        {isModal && onClose && (
+          <button
+            onClick={onClose}
+            className="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-700 flex items-center justify-center font-bold text-xs cursor-pointer transition-colors"
+          >
+            ✕
+          </button>
+        )}
+      </div>
+      <p className="text-xs sm:text-sm text-gray-500 mb-6">Manage discovery preferences, privacy, and account security</p>
 
         {/* Tabs */}
         <div className="flex border-b border-gray-200 mb-6 gap-3 sm:gap-6 text-xs sm:text-sm font-bold overflow-x-auto pb-1">
@@ -362,6 +375,21 @@ const Settings = () => {
           </div>
         )}
       </div>
+  );
+
+  if (isModal) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 backdrop-blur-xs p-4 animate-in fade-in select-none">
+        <div className="bg-white rounded-3xl max-w-2xl w-full shadow-2xl border border-gray-100 overflow-hidden animate-in zoom-in-95 duration-200">
+          {content}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-50 text-gray-900 pt-20 pb-16 px-4 font-sans select-none">
+      {content}
     </div>
   );
 };
