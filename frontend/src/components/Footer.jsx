@@ -14,7 +14,9 @@ const Footer = () => {
     location.pathname === '/app/recs' ||
     location.pathname === '/app/explore' ||
     location.pathname === '/explore' ||
-    location.pathname === '/search'
+    location.pathname === '/search' ||
+    location.pathname === '/chat' ||
+    location.pathname === '/messages'
   ) {
     return null;
   }
