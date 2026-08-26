@@ -2,11 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../context/ThemeContext';
 import { ShieldIcon, UserIcon } from '../components/Icons';
 import { BASE_URL } from '../utils/constants';
 
 const Profile = () => {
   const { user, logout, updateUser } = useAuth();
+  const { theme, toggleTheme, isDark } = useTheme();
   const navigate = useNavigate();
   const [profile, setProfile] = useState(user || null);
   const [loading, setLoading] = useState(!user);
@@ -109,8 +111,15 @@ const Profile = () => {
             </div>
           </div>
 
-          {/* Action Buttons: Edit Profile & Settings Gear */}
+          {/* Action Buttons: Edit Profile, Theme Toggle & Settings Gear */}
           <div className="flex items-center space-x-2">
+            <button
+              onClick={toggleTheme}
+              className="w-9 h-9 rounded-full bg-[#1c202a] hover:bg-[#252b38] text-white flex items-center justify-center text-sm font-bold border border-[#2d3444] cursor-pointer transition-colors"
+              title={isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+            >
+              {isDark ? '☀️' : '🌙'}
+            </button>
             <Link
               to="/profile/edit"
               className="bg-[#1c202a] hover:bg-[#252b38] text-white text-xs font-bold px-3.5 py-2 rounded-full border border-[#2d3444] transition-colors"

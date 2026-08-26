@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../context/ThemeContext';
 import { BASE_URL } from '../utils/constants';
 
 const Settings = ({ isModal = false, onClose, onSaved }) => {
   const { user, logout, updateUser } = useAuth();
+  const { theme, toggleTheme, isDark } = useTheme();
   const [activeTab, setActiveTab] = useState('preferences');
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState({ type: '', text: '' });
@@ -248,13 +250,39 @@ const Settings = ({ isModal = false, onClose, onSaved }) => {
           </form>
         )}
 
-        {/* Privacy Tab */}
+        {/* Privacy & Appearance Tab */}
         {activeTab === 'privacy' && (
-          <form onSubmit={handleSaveSettings} className="bg-white rounded-3xl p-6 sm:p-8 shadow-xs border border-gray-100 space-y-6">
-            <div className="flex items-center justify-between py-2 border-b border-gray-100">
+          <form onSubmit={handleSaveSettings} className="rounded-3xl p-6 sm:p-8 border space-y-6" style={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border-color)' }}>
+            
+            {/* Theme / Appearance Toggle (Light vs Dark) */}
+            <div className="flex items-center justify-between py-2 border-b" style={{ borderColor: 'var(--border-color)' }}>
               <div>
-                <h4 className="text-sm font-bold">Show Online Status</h4>
-                <p className="text-xs text-gray-500">Allow matches to see when you're active</p>
+                <h4 className="text-sm font-bold flex items-center space-x-2" style={{ color: 'var(--text-primary)' }}>
+                  <span>{isDark ? '🌙' : '☀️'}</span>
+                  <span>Theme & Appearance</span>
+                </h4>
+                <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                  Currently in <strong style={{ color: 'var(--accent)' }}>{isDark ? 'Dark Mode (OLED Black)' : 'Light Mode (Clean White)'}</strong>
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={toggleTheme}
+                className="px-4 py-2 rounded-full text-xs font-bold transition-all flex items-center space-x-1.5 cursor-pointer shadow-xs border"
+                style={{
+                  backgroundColor: 'var(--bg-input)',
+                  borderColor: 'var(--border-color)',
+                  color: 'var(--text-primary)'
+                }}
+              >
+                <span>{isDark ? '☀️ Switch to Light' : '🌙 Switch to Dark'}</span>
+              </button>
+            </div>
+
+            <div className="flex items-center justify-between py-2 border-b" style={{ borderColor: 'var(--border-color)' }}>
+              <div>
+                <h4 className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>Show Online Status</h4>
+                <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Allow matches to see when you're active</p>
               </div>
               <input
                 type="checkbox"
@@ -264,10 +292,10 @@ const Settings = ({ isModal = false, onClose, onSaved }) => {
               />
             </div>
 
-            <div className="flex items-center justify-between py-2 border-b border-gray-100">
+            <div className="flex items-center justify-between py-2 border-b" style={{ borderColor: 'var(--border-color)' }}>
               <div>
-                <h4 className="text-sm font-bold">Show Last Seen</h4>
-                <p className="text-xs text-gray-500">Display your recent activity timestamp</p>
+                <h4 className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>Show Last Seen</h4>
+                <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Display your recent activity timestamp</p>
               </div>
               <input
                 type="checkbox"
@@ -279,8 +307,8 @@ const Settings = ({ isModal = false, onClose, onSaved }) => {
 
             <div className="flex items-center justify-between py-2">
               <div>
-                <h4 className="text-sm font-bold">Profile Visibility</h4>
-                <p className="text-xs text-gray-500">Show profile in the Discover card stack</p>
+                <h4 className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>Profile Visibility</h4>
+                <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Show profile in the Discover card stack</p>
               </div>
               <input
                 type="checkbox"
@@ -295,7 +323,7 @@ const Settings = ({ isModal = false, onClose, onSaved }) => {
               disabled={loading}
               className="w-full bg-[#fe3c72] hover:bg-[#e03463] text-white font-bold py-3.5 rounded-full transition-all text-sm shadow-md cursor-pointer"
             >
-              {loading ? 'Saving...' : 'Save Privacy Settings'}
+              {loading ? 'Saving...' : 'Save Settings'}
             </button>
           </form>
         )}

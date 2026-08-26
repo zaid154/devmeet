@@ -20,6 +20,7 @@ import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { SocketProvider } from './context/SocketContext';
+import { ThemeProvider } from './context/ThemeContext';
 import MobileBottomNav from './components/MobileBottomNav';
 
 // Admin imports
@@ -59,7 +60,7 @@ function AppContent() {
   const location = useLocation();
   const { isAuthenticated } = useAuth();
   const isAdminRoute = location.pathname.startsWith('/admin');
-  const isFullscreenApp = location.pathname === '/feed' || location.pathname === '/app/recs' || location.pathname === '/app/explore' || location.pathname === '/explore' || location.pathname === '/search';
+  const isFullscreenApp = ['/feed', '/app/recs', '/app/explore', '/explore', '/search', '/chat', '/messages'].includes(location.pathname);
 
   if (isAdminRoute) {
     return (
@@ -83,7 +84,7 @@ function AppContent() {
   }
 
   return (
-    <div className={`${isFullscreenApp ? 'h-screen overflow-hidden' : 'min-h-screen'} flex flex-col justify-between bg-gray-50 text-gray-900 font-sans relative`}>
+    <div className={`${isFullscreenApp ? 'h-screen overflow-hidden' : 'min-h-screen'} flex flex-col justify-between font-sans relative`} style={{ backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)' }}>
       <Header />
       
       <main className={`flex-1 flex flex-col ${isFullscreenApp ? 'h-full overflow-hidden' : ''}`}>
@@ -127,11 +128,13 @@ function AppContent() {
 function App() {
   return (
     <AuthProvider>
-      <AdminProvider>
-        <SocketProvider>
-          <AppContent />
-        </SocketProvider>
-      </AdminProvider>
+      <ThemeProvider>
+        <AdminProvider>
+          <SocketProvider>
+            <AppContent />
+          </SocketProvider>
+        </AdminProvider>
+      </ThemeProvider>
     </AuthProvider>
   );
 }
