@@ -357,38 +357,38 @@ const Feed = () => {
   }
 
   return (
-    <div className="h-screen w-full flex bg-[#e8ebef] font-sans overflow-hidden select-none relative">
+    <div className="h-screen w-full flex bg-[#000000] text-white font-sans overflow-hidden select-none relative pb-14 md:pb-0">
       
       {/* TURN ON NOTIFICATIONS MODAL */}
       {showNotificationModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4 animate-in fade-in">
-          <div className="bg-white rounded-[32px] p-8 max-w-sm w-full text-center shadow-2xl border border-gray-100 flex flex-col items-center space-y-4 animate-in zoom-in-95">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-xs p-4 animate-in fade-in">
+          <div className="bg-[#161a23] rounded-[32px] p-8 max-w-sm w-full text-center shadow-2xl border border-[#252b3a] flex flex-col items-center space-y-4 animate-in zoom-in-95">
             {/* Top Speech Bubble Icon */}
-            <div className="w-24 h-24 rounded-full bg-gray-100 flex items-center justify-center border border-gray-200 shadow-inner">
-              <svg className="w-12 h-12 text-gray-700" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
+            <div className="w-24 h-24 rounded-full bg-[#101319] flex items-center justify-center border border-[#252b3a] shadow-inner">
+              <svg className="w-12 h-12 text-pink-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M8.625 12a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 01-2.555-.337A5.972 5.972 0 015.41 20.97a.75.75 0 01-.874-1.077 4.544 4.544 0 00.73-1.897C3.9 16.536 3 14.382 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25z" />
               </svg>
             </div>
 
-            <h3 className="text-xl font-extrabold text-gray-900 tracking-tight">
+            <h3 className="text-xl font-extrabold text-white tracking-tight">
               Turn on notifications
             </h3>
 
-            <p className="text-xs text-gray-500 leading-relaxed font-medium">
+            <p className="text-xs text-gray-400 leading-relaxed font-medium">
               Because it's a turnoff to miss a match, message or offer.
             </p>
 
             <div className="w-full space-y-3 pt-2">
               <button
                 onClick={() => setShowNotificationModal(false)}
-                className="w-full bg-black hover:bg-gray-900 text-white font-bold py-3.5 rounded-full text-xs shadow-md transition-all cursor-pointer hover:scale-105"
+                className="w-full bg-[#fe3c72] hover:bg-pink-600 text-white font-bold py-3.5 rounded-full text-xs shadow-md transition-all cursor-pointer hover:scale-105"
               >
                 Notify me
               </button>
 
               <button
                 onClick={() => setShowNotificationModal(false)}
-                className="text-xs font-bold text-gray-800 hover:text-black hover:underline cursor-pointer block mx-auto pt-1"
+                className="text-xs font-bold text-gray-400 hover:text-white hover:underline cursor-pointer block mx-auto pt-1"
               >
                 I'll miss out
               </button>
@@ -398,16 +398,16 @@ const Feed = () => {
       )}
       
       {/* ============================================================ */}
-      {/* 1. LEFT SIDEBAR (Matches & Messages) */}
+      {/* 1. LEFT SIDEBAR (Matches & Messages) - Desktop only */}
       {/* ============================================================ */}
-      <aside className="w-80 lg:w-96 h-full bg-white border-r border-gray-200 flex flex-col shrink-0 z-30">
+      <aside className="hidden md:flex w-80 lg:w-96 h-full bg-[#101319] border-r border-[#1f242e] flex-col shrink-0 z-30">
         
-        {/* Top Profile Header (Crimson Red Header) */}
-        <div className="bg-[#e01438] text-white px-4 py-3.5 flex items-center justify-between shadow-xs">
+        {/* Top Profile Header (Crimson Dark Header) */}
+        <div className="bg-[#161a23] border-b border-[#252b3a] text-white px-4 py-3.5 flex items-center justify-between shadow-xs">
           
           {/* User Profile Avatar */}
           <Link to="/profile" className="flex items-center space-x-2.5 hover:opacity-90 transition-opacity">
-            <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-white/60 shadow-xs">
+            <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-pink-500/60 shadow-xs">
               <img
                 src={user?.profileImage || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde'}
                 alt={user?.firstName || 'You'}
@@ -428,21 +428,21 @@ const Feed = () => {
             </button>
             <button 
               onClick={() => navigate('/app/explore')}
-              className="w-9 h-9 rounded-full bg-black/35 hover:bg-black/55 text-amber-300 flex items-center justify-center text-sm font-bold shadow-xs cursor-pointer hover:scale-105 transition-transform"
+              className="w-9 h-9 rounded-full bg-[#202533] hover:bg-[#2a3142] text-amber-300 flex items-center justify-center text-sm font-bold shadow-xs cursor-pointer hover:scale-105 transition-transform"
               title="Explore & Search"
             >
               🧭
             </button>
             <button 
-              onClick={() => navigate('/connections')}
-              className="w-9 h-9 rounded-full bg-black/35 hover:bg-black/55 text-white flex items-center justify-center text-sm font-bold shadow-xs cursor-pointer hover:scale-105 transition-transform"
+              onClick={() => setSidebarTab('Matches')}
+              className="w-9 h-9 rounded-full bg-[#202533] hover:bg-[#2a3142] text-white flex items-center justify-center text-sm font-bold shadow-xs cursor-pointer hover:scale-105 transition-transform"
               title="Matches & Connections"
             >
               💼
             </button>
             <button 
               onClick={handleOpenNotifications}
-              className="w-9 h-9 rounded-full bg-black/35 hover:bg-black/55 text-white flex items-center justify-center text-sm font-bold shadow-xs cursor-pointer hover:scale-105 transition-transform relative"
+              className="w-9 h-9 rounded-full bg-[#202533] hover:bg-[#2a3142] text-white flex items-center justify-center text-sm font-bold shadow-xs cursor-pointer hover:scale-105 transition-transform relative"
               title="Notifications"
             >
               🔔
@@ -454,7 +454,7 @@ const Feed = () => {
             </button>
             <button 
               onClick={() => setShowSettingsModal(true)}
-              className="w-9 h-9 rounded-full bg-black/35 hover:bg-black/55 text-white flex items-center justify-center text-sm font-bold shadow-xs cursor-pointer hover:scale-105 transition-transform"
+              className="w-9 h-9 rounded-full bg-[#202533] hover:bg-[#2a3142] text-white flex items-center justify-center text-sm font-bold shadow-xs cursor-pointer hover:scale-105 transition-transform"
               title="Safety & Settings"
             >
               🛡️
@@ -464,23 +464,23 @@ const Feed = () => {
         </div>
 
         {/* Tab Switcher: Matches vs Likes vs Messages */}
-        <div className="flex border-b border-gray-200 text-xs font-bold text-gray-700 bg-white">
+        <div className="flex border-b border-[#252b3a] text-xs font-bold text-gray-400 bg-[#101319]">
           <button
             onClick={() => setSidebarTab('Matches')}
             className={`flex-1 py-3 text-center cursor-pointer transition-all relative ${
               sidebarTab === 'Matches'
-                ? 'text-gray-900 font-extrabold'
-                : 'text-gray-500 hover:text-gray-900'
+                ? 'text-white font-extrabold'
+                : 'text-gray-400 hover:text-white'
             }`}
           >
             <span>Matches</span>
             {matchesList.length > 0 && (
-              <span className="ml-1.5 bg-gray-100 text-gray-800 text-[10px] font-bold px-1.5 py-0.5 rounded-full">
+              <span className="ml-1.5 bg-[#252b3a] text-gray-200 text-[10px] font-bold px-1.5 py-0.5 rounded-full">
                 {matchesList.length}
               </span>
             )}
             {sidebarTab === 'Matches' && (
-              <div className="absolute bottom-0 left-2 right-2 h-0.5 bg-[#e01438] rounded-full" />
+              <div className="absolute bottom-0 left-2 right-2 h-0.5 bg-[#fe3c72] rounded-full" />
             )}
           </button>
 
@@ -488,8 +488,8 @@ const Feed = () => {
             onClick={() => setSidebarTab('Requests')}
             className={`flex-1 py-3 text-center cursor-pointer transition-all relative ${
               sidebarTab === 'Requests'
-                ? 'text-gray-900 font-extrabold'
-                : 'text-gray-500 hover:text-gray-900'
+                ? 'text-white font-extrabold'
+                : 'text-gray-400 hover:text-white'
             }`}
           >
             <span>Likes</span>
@@ -499,7 +499,7 @@ const Feed = () => {
               </span>
             )}
             {sidebarTab === 'Requests' && (
-              <div className="absolute bottom-0 left-2 right-2 h-0.5 bg-[#e01438] rounded-full" />
+              <div className="absolute bottom-0 left-2 right-2 h-0.5 bg-[#fe3c72] rounded-full" />
             )}
           </button>
 
@@ -507,18 +507,18 @@ const Feed = () => {
             onClick={() => setSidebarTab('Messages')}
             className={`flex-1 py-3 text-center cursor-pointer transition-all relative ${
               sidebarTab === 'Messages'
-                ? 'text-gray-900 font-extrabold'
-                : 'text-gray-500 hover:text-gray-900'
+                ? 'text-white font-extrabold'
+                : 'text-gray-400 hover:text-white'
             }`}
           >
             <span>Messages</span>
             {conversations.length > 0 && (
-              <span className="ml-1.5 bg-gray-100 text-gray-800 text-[10px] font-bold px-1.5 py-0.5 rounded-full">
+              <span className="ml-1.5 bg-[#252b3a] text-gray-200 text-[10px] font-bold px-1.5 py-0.5 rounded-full">
                 {conversations.length}
               </span>
             )}
             {sidebarTab === 'Messages' && (
-              <div className="absolute bottom-0 left-2 right-2 h-0.5 bg-[#e01438] rounded-full" />
+              <div className="absolute bottom-0 left-2 right-2 h-0.5 bg-[#fe3c72] rounded-full" />
             )}
           </button>
         </div>
@@ -532,9 +532,9 @@ const Feed = () => {
               <div className="grid grid-cols-3 gap-2.5">
                 {matchesList.map((m) => (
                   <Link key={m._id} to="/chat" className="text-center group">
-                    <div className="aspect-3/4 rounded-xl overflow-hidden border border-gray-200 group-hover:border-[#fe3c72] transition-colors relative shadow-xs">
+                    <div className="aspect-3/4 rounded-xl overflow-hidden border border-[#252b3a] group-hover:border-[#fe3c72] transition-colors relative shadow-xs">
                       <img src={m.profileImage || m.photos?.[0]} alt={m.firstName} className="w-full h-full object-cover" />
-                      <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/80 to-transparent p-1.5 text-[10px] text-white font-bold truncate">
+                      <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/90 to-transparent p-1.5 text-[10px] text-white font-bold truncate">
                         {m.firstName}
                       </div>
                     </div>
@@ -543,13 +543,13 @@ const Feed = () => {
               </div>
             ) : (
               <div className="space-y-4 max-w-xs mx-auto my-auto text-center">
-                <div className="w-24 h-36 rounded-2xl bg-[#c8102e] shadow-lg mx-auto flex items-center justify-center text-white text-3xl">
+                <div className="w-24 h-36 rounded-2xl bg-[#fe3c72]/20 border border-[#fe3c72]/40 shadow-lg mx-auto flex items-center justify-center text-white text-3xl">
                   ❤️
                 </div>
-                <h3 className="text-xl font-black text-gray-900 tracking-tight">
+                <h3 className="text-xl font-black text-white tracking-tight">
                   Start Matching
                 </h3>
-                <p className="text-xs text-gray-500 leading-relaxed font-medium max-w-[240px] mx-auto">
+                <p className="text-xs text-gray-400 leading-relaxed font-medium max-w-[240px] mx-auto">
                   Matches will appear here once you both Like each other. You can message them directly when ready!
                 </p>
               </div>
@@ -565,23 +565,23 @@ const Feed = () => {
                   return (
                     <div
                       key={req._id}
-                      className="bg-white border border-gray-200 hover:border-pink-300 p-3 rounded-2xl shadow-xs transition-all flex items-center justify-between gap-3"
+                      className="bg-[#161a23] border border-[#252b3a] hover:border-pink-500/40 p-3 rounded-2xl shadow-xs transition-all flex items-center justify-between gap-3"
                     >
                       <div className="flex items-center space-x-2.5 min-w-0">
                         <img
                           src={fromUser.profileImage || fromUser.photos?.[0] || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb'}
                           alt={fromUser.firstName}
-                          className="w-12 h-12 rounded-xl object-cover border shrink-0"
+                          className="w-12 h-12 rounded-xl object-cover border border-[#252b3a] shrink-0"
                         />
                         <div className="min-w-0">
-                          <h4 className="text-xs font-black text-gray-900 truncate">
+                          <h4 className="text-xs font-black text-white truncate">
                             {fromUser.firstName}, {fromUser.age || 24}
                           </h4>
-                          <p className="text-[11px] text-gray-500 truncate">
+                          <p className="text-[11px] text-gray-400 truncate">
                             {fromUser.job || fromUser.location || 'Interested in you'}
                           </p>
                           {req.status === 'super-like' && (
-                            <span className="text-[9px] font-bold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded">
+                            <span className="text-[9px] font-bold text-blue-400 bg-blue-950/60 border border-blue-800 px-1.5 py-0.5 rounded">
                               ⭐ Super Liked you
                             </span>
                           )}
@@ -592,7 +592,7 @@ const Feed = () => {
                       <div className="flex items-center space-x-1.5 shrink-0">
                         <button
                           onClick={() => handleRejectRequest(req._id)}
-                          className="w-8 h-8 rounded-full bg-gray-100 hover:bg-red-50 text-gray-500 hover:text-red-600 flex items-center justify-center font-bold text-xs cursor-pointer transition-colors"
+                          className="w-8 h-8 rounded-full bg-[#202533] hover:bg-red-900/40 text-gray-400 hover:text-red-400 flex items-center justify-center font-bold text-xs cursor-pointer transition-colors"
                           title="Pass"
                         >
                           ✕
@@ -611,13 +611,13 @@ const Feed = () => {
               </div>
             ) : (
               <div className="space-y-4 max-w-xs mx-auto my-auto text-center">
-                <div className="w-16 h-16 rounded-full bg-amber-50 mx-auto flex items-center justify-center text-2xl">
+                <div className="w-16 h-16 rounded-full bg-amber-500/10 border border-amber-500/30 mx-auto flex items-center justify-center text-2xl">
                   ✨
                 </div>
-                <h3 className="text-xl font-black text-gray-900 tracking-tight">
+                <h3 className="text-xl font-black text-white tracking-tight">
                   No Pending Likes
                 </h3>
-                <p className="text-xs text-gray-500 leading-relaxed font-medium max-w-[240px] mx-auto">
+                <p className="text-xs text-gray-400 leading-relaxed font-medium max-w-[240px] mx-auto">
                   When someone likes or super likes your profile, they will appear here so you can match back!
                 </p>
               </div>
@@ -632,23 +632,23 @@ const Feed = () => {
                   <Link
                     key={c._id}
                     to="/chat"
-                    className="flex items-center space-x-3 p-2.5 rounded-2xl hover:bg-gray-100 transition-colors"
+                    className="flex items-center space-x-3 p-2.5 rounded-2xl hover:bg-[#1c212d] transition-colors"
                   >
-                    <img src={c.otherUser?.profileImage} alt="" className="w-11 h-11 rounded-full object-cover border" />
+                    <img src={c.otherUser?.profileImage} alt="" className="w-11 h-11 rounded-full object-cover border border-[#252b3a]" />
                     <div className="flex-1 min-w-0">
-                      <h4 className="text-xs font-bold text-gray-900">{c.otherUser?.firstName}</h4>
-                      <p className="text-[11px] text-gray-500 truncate">{c.lastMessage?.text || 'Say hi 👋'}</p>
+                      <h4 className="text-xs font-bold text-white">{c.otherUser?.firstName}</h4>
+                      <p className="text-[11px] text-gray-400 truncate">{c.lastMessage?.text || 'Say hi 👋'}</p>
                     </div>
                   </Link>
                 ))}
               </div>
             ) : (
               <div className="space-y-3 max-w-xs mx-auto my-auto text-center">
-                <div className="w-16 h-16 rounded-full bg-gray-100 mx-auto flex items-center justify-center text-2xl">
+                <div className="w-16 h-16 rounded-full bg-[#1c212d] mx-auto flex items-center justify-center text-2xl">
                   💬
                 </div>
-                <h4 className="text-base font-black text-gray-900">Say Hello</h4>
-                <p className="text-xs text-gray-500 leading-relaxed font-medium max-w-[240px] mx-auto">
+                <h4 className="text-base font-black text-white">Say Hello</h4>
+                <p className="text-xs text-gray-400 leading-relaxed font-medium max-w-[240px] mx-auto">
                   Looking to strike up a conversation? When you match with others, you can message them directly here.
                 </p>
               </div>
@@ -663,22 +663,75 @@ const Feed = () => {
       {/* ============================================================ */}
       {/* 2. MAIN CARD SWIPING STACK DECK */}
       {/* ============================================================ */}
-      <main className="flex-1 h-full flex flex-col items-center justify-center p-2 sm:p-4 overflow-hidden relative select-none">
+      <main className="flex-1 h-full flex flex-col items-center justify-between p-2 sm:p-4 overflow-hidden relative select-none bg-[#000000]">
         
+        {/* Mobile Top Header (Exact Match to Video 0:03) */}
+        <div className="w-full max-w-md flex items-center justify-between px-3 pt-1 pb-2 select-none shrink-0">
+          <button
+            onClick={() => setShowSettingsModal(true)}
+            className="w-10 h-10 rounded-full bg-[#181c26] text-gray-400 hover:text-white flex items-center justify-center cursor-pointer transition-colors border border-[#282f3f]"
+            title="Discovery Filters"
+          >
+            <svg className="w-5 h-5 stroke-current stroke-2 fill-none" viewBox="0 0 24 24">
+              <path d="M4 6h16M4 12h16M4 18h16" />
+              <circle cx="8" cy="6" r="2" fill="currentColor" />
+              <circle cx="16" cy="12" r="2" fill="currentColor" />
+              <circle cx="10" cy="18" r="2" fill="currentColor" />
+            </svg>
+          </button>
+
+          {/* Center Tabs: For You vs Double Date */}
+          <div className="flex items-center space-x-6 text-sm font-black tracking-tight">
+            <button className="text-white relative pb-1">
+              <span>For You</span>
+              <div className="absolute bottom-0 inset-x-0 h-0.5 bg-[#fe3c72] rounded-full"></div>
+            </button>
+            <button
+              onClick={() => navigate('/app/explore')}
+              className="text-gray-400 hover:text-gray-200 pb-1 flex items-center space-x-1 transition-colors cursor-pointer"
+            >
+              <span>Double Date</span>
+              <span className="w-2 h-2 rounded-full bg-pink-500 animate-ping"></span>
+            </button>
+          </div>
+
+          <button
+            onClick={handleOpenNotifications}
+            className="w-10 h-10 rounded-full bg-[#181c26] text-amber-400 hover:text-amber-300 flex items-center justify-center cursor-pointer transition-colors border border-[#282f3f] relative"
+            title="Super Likes & Boosts"
+          >
+            ⚡
+            {unreadNotifications > 0 && (
+              <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 rounded-full bg-red-500 ring-2 ring-black animate-pulse"></span>
+            )}
+          </button>
+        </div>
+
         {loading ? (
-          <div className="flex flex-col items-center justify-center space-y-4">
-            <FlameIcon className="w-16 h-16 text-[#fe3c72] animate-pulse" />
-            <span className="text-sm font-extrabold text-gray-500 uppercase tracking-wider">Finding Matches nearby...</span>
+          <div className="flex flex-col items-center justify-center space-y-4 my-auto">
+            <div className="relative">
+              <img
+                src={user?.profileImage || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde'}
+                alt="Profile"
+                className="w-20 h-20 rounded-full object-cover border-2 border-pink-500/80 shadow-2xl animate-pulse"
+              />
+              <div className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-[#fe3c72] flex items-center justify-center text-white text-xs">
+                🔥
+              </div>
+            </div>
+            <span className="text-xs font-extrabold text-gray-400 uppercase tracking-widest animate-pulse">
+              Finding people near you ...
+            </span>
           </div>
         ) : currentIndex >= users.length ? (
-          <div className="text-center space-y-5 bg-white p-8 sm:p-10 rounded-[32px] shadow-xl border border-gray-100 max-w-md animate-in zoom-in-95 my-auto">
-            <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-gradient-to-tr from-pink-100 to-red-50 mx-auto flex items-center justify-center">
+          <div className="text-center space-y-5 bg-[#141721] p-8 sm:p-10 rounded-[32px] shadow-2xl border border-[#262c3b] max-w-md animate-in zoom-in-95 my-auto text-white">
+            <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-[#fe3c72]/15 border border-[#fe3c72]/30 mx-auto flex items-center justify-center">
               <FlameIcon className="w-8 h-8 sm:w-10 sm:h-10 text-[#fe3c72]" />
             </div>
-            <h2 className="text-xl sm:text-2xl font-black text-gray-900">
+            <h2 className="text-xl sm:text-2xl font-black text-white">
               {users.length === 0 ? 'No matching profiles found' : "That's everyone for now!"}
             </h2>
-            <p className="text-xs text-gray-500 leading-relaxed max-w-xs mx-auto">
+            <p className="text-xs text-gray-400 leading-relaxed max-w-xs mx-auto">
               {users.length === 0 
                 ? 'We could not find any active profiles matching your selected gender and dating preferences.' 
                 : 'You have seen all available profiles matching your preferences. Check back later or reset your feed.'}
@@ -686,13 +739,13 @@ const Feed = () => {
             <div className="flex flex-col sm:flex-row items-center justify-center gap-2.5 pt-2">
               <button
                 onClick={handleResetFeed}
-                className="w-full sm:w-auto bg-black hover:bg-gray-900 text-white font-bold px-6 py-3 rounded-full text-xs uppercase tracking-wider shadow-md cursor-pointer hover:scale-105 transition-all"
+                className="w-full sm:w-auto bg-[#fe3c72] hover:bg-pink-600 text-white font-bold px-6 py-3 rounded-full text-xs uppercase tracking-wider shadow-md cursor-pointer hover:scale-105 transition-all"
               >
                 Reset Feed
               </button>
               <button
                 onClick={() => setShowSettingsModal(true)}
-                className="w-full sm:w-auto bg-gray-100 hover:bg-gray-200 text-gray-800 font-bold px-6 py-3 rounded-full text-xs uppercase tracking-wider transition-all text-center cursor-pointer hover:scale-105"
+                className="w-full sm:w-auto bg-[#202533] hover:bg-[#2a3142] text-gray-200 font-bold px-6 py-3 rounded-full text-xs uppercase tracking-wider transition-all text-center cursor-pointer hover:scale-105 border border-[#2e374a]"
               >
                 Edit Preferences
               </button>
@@ -706,7 +759,7 @@ const Feed = () => {
               
               {/* BACK / NEXT CARD (Sits behind top card) */}
               {nextUser && (
-                <div className="absolute inset-0 bg-black rounded-[28px] overflow-hidden shadow-xl z-10 select-none pointer-events-none">
+                <div className="absolute inset-0 bg-[#161922] border border-[#262c3b] rounded-[28px] overflow-hidden shadow-xl z-10 select-none pointer-events-none">
                   <img
                     src={nextUserPhotos[0]}
                     alt={nextUser.firstName}
@@ -717,7 +770,7 @@ const Feed = () => {
                       <div key={pIdx} className="h-1 flex-1 rounded-full bg-white/40" />
                     ))}
                   </div>
-                  <div className="absolute bottom-0 inset-x-0 z-20 bg-gradient-to-t from-black via-black/60 to-transparent pt-16 pb-4 px-5 text-white text-left">
+                  <div className="absolute bottom-0 inset-x-0 z-20 bg-gradient-to-t from-black via-black/70 to-transparent pt-16 pb-4 px-5 text-white text-left">
                     <div className="flex items-center space-x-1.5 text-[11px] font-bold text-emerald-400 mb-0.5">
                       <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
                       <span>Recently Active</span>
@@ -742,13 +795,13 @@ const Feed = () => {
                   opacity: cardOpacity,
                   transition: isDragging ? 'none' : 'transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.3s ease-out'
                 }}
-                className="absolute inset-0 bg-black rounded-[28px] overflow-hidden shadow-2xl z-20 select-none cursor-grab active:cursor-grabbing"
+                className="absolute inset-0 bg-[#161922] border border-[#262c3b] rounded-[28px] overflow-hidden shadow-2xl z-20 select-none cursor-grab active:cursor-grabbing"
               >
                 {/* Photo Image */}
                 <img
                   src={userPhotos[currentPhotoIndex] || currentUser?.profileImage}
                   alt={currentUser?.firstName}
-                  className="w-full h-full object-cover pointer-events-none"
+                  className="w-full h-full object-pointer-events-none"
                 />
 
                 {/* Story Segments Progress Bars at Top */}
@@ -763,29 +816,23 @@ const Feed = () => {
                   ))}
                 </div>
 
-                {/* Floating Left `<` & Right `>` Photo Navigation Buttons */}
-                {userPhotos.length > 1 && (
-                  <>
-                    {currentPhotoIndex > 0 && (
-                      <button
-                        onClick={handlePrevPhoto}
-                        className="absolute left-3 top-1/2 -translate-y-1/2 z-30 w-8 h-8 rounded-full bg-white/80 hover:bg-white text-gray-900 flex items-center justify-center text-xs font-black shadow-lg cursor-pointer transition-transform hover:scale-110"
-                        title="Previous Photo"
-                      >
-                        ‹
-                      </button>
-                    )}
-                    {currentPhotoIndex < userPhotos.length - 1 && (
-                      <button
-                        onClick={handleNextPhoto}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 z-30 w-8 h-8 rounded-full bg-white/80 hover:bg-white text-gray-900 flex items-center justify-center text-xs font-black shadow-lg cursor-pointer transition-transform hover:scale-110"
-                        title="Next Photo"
-                      >
-                        ›
-                      </button>
-                    )}
-                  </>
-                )}
+                {/* Tap Zones for Next/Prev Photo */}
+                <div
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handlePrevPhoto();
+                  }}
+                  className="absolute left-0 inset-y-0 w-1/3 z-20 cursor-pointer"
+                  title="Previous Photo"
+                />
+                <div
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleNextPhoto();
+                  }}
+                  className="absolute right-0 inset-y-0 w-1/3 z-20 cursor-pointer"
+                  title="Next Photo"
+                />
 
                 {/* LIKE STAMP (Giant Crimson Heart on Left Swipe) */}
                 {showLikeStamp && (
@@ -806,74 +853,68 @@ const Feed = () => {
                 )}
 
                 {/* Bottom Info Gradient */}
-                <div className="absolute bottom-0 inset-x-0 z-20 bg-gradient-to-t from-black via-black/70 to-transparent pt-16 pb-4 px-5 text-white text-left pointer-events-none">
+                <div className="absolute bottom-0 inset-x-0 z-20 bg-gradient-to-t from-black via-black/80 to-transparent pt-16 pb-4 px-5 text-white text-left pointer-events-none">
                   
-                  {/* Recently Active */}
-                  <div className="flex items-center space-x-1.5 text-[11px] font-bold text-emerald-400 mb-0.5">
-                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                    <span>Recently Active</span>
+                  {/* Status Pill */}
+                  <div className="flex items-center space-x-2 mb-1.5">
+                    <span className="bg-black/60 backdrop-blur-md text-white text-[11px] font-bold px-3 py-1 rounded-full border border-white/20 inline-flex items-center space-x-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block"></span>
+                      <span>{currentUser?.statusBadge || 'Nearby'}</span>
+                    </span>
                   </div>
 
-                  {/* Name + Age + Verified Badge + Up Arrow Button */}
+                  {/* Name + Age + Verified */}
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-2">
-                      <h2 className="text-2xl sm:text-3xl font-black tracking-tight drop-shadow-md">
+                      <h2 className="text-2xl sm:text-3xl font-black tracking-tight drop-shadow-md text-white">
                         {currentUser?.firstName} {currentUser?.age || 24}
                       </h2>
                       {currentUser?.isVerified && (
-                        <span className="w-5 h-5 rounded-full bg-[#1877F2] text-white flex items-center justify-center text-[10px] font-black shadow-xs">
+                        <span className="w-5 h-5 rounded-full bg-[#1d9bf0] text-white flex items-center justify-center text-[10px] font-black shadow-xs">
                           ✓
                         </span>
                       )}
                     </div>
 
+                    {/* Upward Chevron Arrow Button */}
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
                         setIsProfileExpanded(!isProfileExpanded);
                       }}
-                      className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/40 text-white flex items-center justify-center text-sm font-black transition-all cursor-pointer backdrop-blur-xs pointer-events-auto"
-                      title="Open Profile"
+                      className="pointer-events-auto w-8 h-8 rounded-full bg-white/20 hover:bg-white/40 text-white flex items-center justify-center font-bold text-xs backdrop-blur-md transition-all cursor-pointer hover:scale-110"
+                      title="View Full Profile Details"
                     >
-                      {isProfileExpanded ? '↓' : '↑'}
+                      {isProfileExpanded ? '⬇' : '⬆'}
                     </button>
                   </div>
 
-                  {/* City & Distance */}
-                  <div className="space-y-0.5 mt-0.5 text-xs text-gray-300 font-medium">
-                    {currentUser?.city && (
-                      <p className="flex items-center space-x-1">
-                        <span>🏠</span>
-                        <span>{currentUser.city}</span>
-                      </p>
-                    )}
-                    <p className="flex items-center space-x-1">
-                      <span>📍</span>
-                      <span>{currentUser?.location || '14 kilometers away'}</span>
-                    </p>
+                  {/* Location distance */}
+                  <div className="flex items-center space-x-1.5 text-xs text-gray-200 font-medium mt-1">
+                    <span>📍</span>
+                    <span>{currentUser?.location || '1 km away'}</span>
                   </div>
 
-                  {/* Expanded Profile Details */}
+                  {/* Bio & Interests Preview if expanded */}
                   {isProfileExpanded && (
-                    <div className="mt-3 pt-3 border-t border-white/20 space-y-2.5 animate-in fade-in slide-in-from-bottom-2 duration-150 pointer-events-auto max-h-36 overflow-y-auto pr-1">
+                    <div className="mt-3 pt-3 border-t border-white/20 space-y-2 pointer-events-auto animate-in fade-in duration-200">
                       {currentUser?.bio && (
-                        <p className="text-xs text-gray-200 leading-relaxed">{currentUser.bio}</p>
+                        <p className="text-xs text-gray-200 line-clamp-3 leading-relaxed">
+                          {currentUser.bio}
+                        </p>
                       )}
-                      
-                      {currentUser?.skills?.length > 0 && (
-                        <div className="flex flex-wrap gap-1">
-                          {currentUser.skills.map((s, sIdx) => (
-                            <span key={sIdx} className="bg-white/20 text-white text-[10px] font-bold px-2 py-0.5 rounded-full backdrop-blur-xs">
-                              {s}
-                            </span>
-                          ))}
+
+                      {currentUser?.job && (
+                        <div className="flex items-center space-x-1.5 text-xs text-gray-300">
+                          <span>💼</span>
+                          <span>{currentUser.job}</span>
                         </div>
                       )}
 
                       {currentUser?.interests?.length > 0 && (
                         <div className="flex flex-wrap gap-1 pt-0.5">
                           {currentUser.interests.map((t, tIdx) => (
-                            <span key={tIdx} className="border border-white/30 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
+                            <span key={tIdx} className="bg-white/20 backdrop-blur-md border border-white/30 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
                               {t}
                             </span>
                           ))}
@@ -889,13 +930,13 @@ const Feed = () => {
             </div>
 
 
-            {/* 5 GAMEPAD ACTION BUTTONS (Exact Match to Screenshot 3) */}
+            {/* 5 GAMEPAD ACTION BUTTONS (Exact Match to Video 0:10) */}
             <div className="flex items-center justify-center gap-3 sm:gap-4 pt-1 shrink-0">
               
               {/* 1. Rewind */}
               <button
                 onClick={handleRewind}
-                className="w-12 h-12 rounded-full bg-white text-gray-400 hover:text-yellow-500 shadow-md border border-gray-100 flex items-center justify-center font-bold text-xl hover:scale-110 active:scale-95 transition-all cursor-pointer"
+                className="w-12 h-12 rounded-full bg-[#181c26] text-yellow-400 hover:text-yellow-300 shadow-lg border border-[#2a3142] flex items-center justify-center font-bold text-xl hover:scale-110 active:scale-95 transition-all cursor-pointer"
                 title="Rewind (↺)"
               >
                 ↺
@@ -904,7 +945,7 @@ const Feed = () => {
               {/* 2. Nope (✕) */}
               <button
                 onClick={() => triggerSwipeAnimation('nope')}
-                className="w-16 h-16 rounded-full bg-white text-gray-800 hover:text-red-500 shadow-xl border border-gray-100 flex items-center justify-center font-black text-2xl hover:scale-110 active:scale-95 transition-all cursor-pointer"
+                className="w-16 h-16 rounded-full bg-[#181c26] text-gray-200 hover:text-red-500 shadow-xl border border-[#2a3142] flex items-center justify-center font-black text-2xl hover:scale-110 active:scale-95 transition-all cursor-pointer"
                 title="Nope (←)"
               >
                 ✕
@@ -913,7 +954,7 @@ const Feed = () => {
               {/* 3. Super Like (⭐) */}
               <button
                 onClick={() => triggerSwipeAnimation('super-like')}
-                className="w-12 h-12 rounded-full bg-white text-blue-400 hover:text-blue-500 shadow-md border border-gray-100 flex items-center justify-center font-bold text-lg hover:scale-110 active:scale-95 transition-all cursor-pointer"
+                className="w-12 h-12 rounded-full bg-[#181c26] text-blue-400 hover:text-blue-300 shadow-lg border border-[#2a3142] flex items-center justify-center font-bold text-lg hover:scale-110 active:scale-95 transition-all cursor-pointer"
                 title="Super Like (⭐)"
               >
                 ⭐
@@ -924,8 +965,8 @@ const Feed = () => {
                 onClick={() => triggerSwipeAnimation('like')}
                 className={`w-16 h-16 rounded-full border shadow-xl flex items-center justify-center font-black text-2xl hover:scale-110 active:scale-95 transition-all cursor-pointer ${
                   animatingSwipe === 'like'
-                    ? 'bg-red-600 text-white border-red-600 shadow-red-300'
-                    : 'bg-white text-red-500 hover:bg-pink-50 border-gray-100'
+                    ? 'bg-gradient-to-tr from-[#fe3c72] to-[#ff6036] text-white border-transparent shadow-pink-900/50'
+                    : 'bg-[#181c26] text-[#fe3c72] hover:bg-[#fe3c72] hover:text-white border-[#2a3142]'
                 }`}
                 title="Like (→)"
               >
@@ -935,7 +976,7 @@ const Feed = () => {
               {/* 5. Boost / Send (✈️) */}
               <button
                 onClick={() => navigate('/chat')}
-                className="w-12 h-12 rounded-full bg-white text-blue-500 hover:bg-blue-50 border border-gray-100 shadow-md flex items-center justify-center font-bold text-xl hover:scale-110 active:scale-95 transition-all cursor-pointer"
+                className="w-12 h-12 rounded-full bg-[#181c26] text-purple-400 hover:text-purple-300 border border-[#2a3142] shadow-lg flex items-center justify-center font-bold text-xl hover:scale-110 active:scale-95 transition-all cursor-pointer"
                 title="Send / Chat"
               >
                 ✈
@@ -944,15 +985,14 @@ const Feed = () => {
             </div>
 
 
-            {/* KEYBOARD SHORTCUTS LEGEND (Exact Match to Screenshot 3) */}
-            <div className="hidden lg:flex items-center space-x-2 text-[10px] font-bold text-gray-500 pt-1 shrink-0 select-none">
-              <span className="bg-[#2b2b2b] text-white px-3.5 py-1 rounded-full text-[11px] font-black cursor-pointer hover:bg-black">Hide</span>
-              <span className="bg-white border border-gray-300 px-2 py-0.5 rounded-md text-gray-700 flex items-center space-x-1 font-semibold"><span>⬅</span><span>Nope</span></span>
-              <span className="bg-white border border-gray-300 px-2 py-0.5 rounded-md text-gray-700 flex items-center space-x-1 font-semibold"><span>➡</span><span>Like</span></span>
-              <span className="bg-white border border-gray-300 px-2 py-0.5 rounded-md text-gray-700 flex items-center space-x-1 font-semibold"><span>⬆</span><span>Open Profile</span></span>
-              <span className="bg-white border border-gray-300 px-2 py-0.5 rounded-md text-gray-700 flex items-center space-x-1 font-semibold"><span>⬇</span><span>Close Profile</span></span>
-              <span className="bg-white border border-gray-300 px-2 py-0.5 rounded-md text-gray-700 flex items-center space-x-1 font-semibold"><span>⮐</span><span>Super Like</span></span>
-              <span className="bg-white border border-gray-300 px-3 py-0.5 rounded-md text-gray-700 flex items-center space-x-1.5 font-semibold"><span className="w-8 h-2.5 border border-gray-400 rounded-xs inline-block"></span><span>Next Photo</span></span>
+            {/* KEYBOARD SHORTCUTS LEGEND (Desktop only) */}
+            <div className="hidden lg:flex items-center space-x-2 text-[10px] font-bold text-gray-400 pt-1 shrink-0 select-none">
+              <span className="bg-[#202533] text-white px-3.5 py-1 rounded-full text-[11px] font-black cursor-pointer hover:bg-black border border-[#2a3142]">DevMeet Deck</span>
+              <span className="bg-[#181c26] border border-[#2a3142] px-2 py-0.5 rounded-md text-gray-300 flex items-center space-x-1 font-semibold"><span>⬅</span><span>Nope</span></span>
+              <span className="bg-[#181c26] border border-[#2a3142] px-2 py-0.5 rounded-md text-gray-300 flex items-center space-x-1 font-semibold"><span>➡</span><span>Like</span></span>
+              <span className="bg-[#181c26] border border-[#2a3142] px-2 py-0.5 rounded-md text-gray-300 flex items-center space-x-1 font-semibold"><span>⬆</span><span>Open Profile</span></span>
+              <span className="bg-[#181c26] border border-[#2a3142] px-2 py-0.5 rounded-md text-gray-300 flex items-center space-x-1 font-semibold"><span>⮐</span><span>Super Like</span></span>
+              <span className="bg-[#181c26] border border-[#2a3142] px-3 py-0.5 rounded-md text-gray-300 flex items-center space-x-1.5 font-semibold"><span className="w-8 h-2.5 border border-gray-600 rounded-xs inline-block"></span><span>Next Photo</span></span>
             </div>
 
           </div>

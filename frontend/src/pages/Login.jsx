@@ -27,8 +27,6 @@ const Login = ({ initialMode }) => {
   const [email, setEmail] = useState('');
   const [countryCode, setCountryCode] = useState('+91');
   const [phoneNumber, setPhoneNumber] = useState('');
-  const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
   
   // 6 digit OTP states
   const [emailOtp, setEmailOtp] = useState(['', '', '', '', '', '']);
@@ -219,37 +217,6 @@ const Login = ({ initialMode }) => {
     }
   };
 
-  // Password fallback
-  const handlePasswordLogin = async (e) => {
-    e.preventDefault();
-    setError('');
-
-    if (!email || !password) {
-      setError('Please enter both email and password.');
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const res = await axios.post(
-        `${BASE_URL}/login`,
-        { email: email.trim(), password },
-        { withCredentials: true }
-      );
-
-      if (res.data.status) {
-        if (res.data.data) login(res.data.data);
-        navigate('/feed');
-      } else {
-        setError(res.data.message || 'Invalid Credentials');
-      }
-    } catch (err) {
-      setError(err.response?.data?.message || 'Login failed. Please verify credentials.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
   if (loading) {
     return <SplashLoader text="Authenticating with DevMeet..." fullScreen={true} />;
   }
@@ -364,10 +331,10 @@ const Login = ({ initialMode }) => {
             <div className="pt-0.5">
               <button
                 type="button"
-                onClick={() => setStep('password-login')}
+                onClick={() => setStep('email-input')}
                 className="text-xs text-[#1877F2] font-bold hover:underline cursor-pointer"
               >
-                Trouble Logging In?
+                Need help logging in?
               </button>
             </div>
 
@@ -693,78 +660,6 @@ const Login = ({ initialMode }) => {
               I agree
             </button>
           </div>
-        )}
-
-
-        {/* ============================================================ */}
-        {/* PASSWORD LOGIN (Fallback for Trouble logging in) */}
-        {/* ============================================================ */}
-        {step === 'password-login' && (
-          <form onSubmit={handlePasswordLogin} className="space-y-4 text-left">
-            <div>
-              <h2 className="text-2xl font-black text-gray-900 tracking-tight text-center">
-                Log In with Password
-              </h2>
-              <p className="text-xs text-gray-500 mt-1 text-center">
-                Enter your account email and password
-              </p>
-            </div>
-
-            <div>
-              <label className="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1">
-                Email Address
-              </label>
-              <input
-                type="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="name@example.com"
-                className="w-full bg-[#f0f2f5] focus:bg-white border-2 border-transparent focus:border-[#1877F2] text-gray-900 px-4 py-3 rounded-2xl text-sm outline-none transition-colors"
-              />
-            </div>
-
-            <div>
-              <div className="flex justify-between items-center mb-1">
-                <label className="block text-[11px] font-bold text-gray-500 uppercase tracking-wider">
-                  Password
-                </label>
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="text-[11px] text-gray-500 hover:text-black cursor-pointer font-semibold"
-                >
-                  {showPassword ? 'Hide' : 'Show'}
-                </button>
-              </div>
-              <input
-                type={showPassword ? 'text' : 'password'}
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-                className="w-full bg-[#f0f2f5] focus:bg-white border-2 border-transparent focus:border-[#1877F2] text-gray-900 px-4 py-3 rounded-2xl text-sm outline-none transition-colors"
-              />
-            </div>
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full bg-black hover:bg-gray-900 text-white font-bold py-4 rounded-full transition-all text-sm shadow-md cursor-pointer disabled:opacity-50 mt-2"
-            >
-              {loading ? 'Logging in...' : 'Log In'}
-            </button>
-
-            <div className="text-center pt-1">
-              <button
-                type="button"
-                onClick={() => navigate('/forgot-password')}
-                className="text-xs text-[#1877F2] font-bold hover:underline cursor-pointer"
-              >
-                Forgot Password?
-              </button>
-            </div>
-          </form>
         )}
 
       </div>

@@ -276,19 +276,19 @@ const Explore = () => {
   }
 
   return (
-    <div className="h-screen w-full flex bg-[#e8ebef] font-sans overflow-hidden select-none relative">
+    <div className="h-screen w-full flex bg-[#000000] text-white font-sans overflow-hidden select-none relative pb-14 md:pb-0">
       
       {/* ============================================================ */}
       {/* 1. LEFT SIDEBAR (Explore Categories) */}
       {/* ============================================================ */}
-      <aside className="w-80 lg:w-96 h-full bg-white border-r border-gray-200 flex flex-col shrink-0 z-30">
+      <aside className="w-full md:w-80 lg:w-96 h-full bg-[#101319] border-r border-[#1f242e] flex flex-col shrink-0 z-30">
         
-        {/* Top Profile Header (Crimson Red Header) */}
-        <div className="bg-[#e01438] text-white px-4 py-3.5 flex items-center justify-between shadow-xs">
+        {/* Top Profile Header (Crimson Dark Header) */}
+        <div className="bg-[#161a23] border-b border-[#252b3a] text-white px-4 py-3.5 flex items-center justify-between shadow-xs">
           
           {/* User Profile Avatar */}
           <Link to="/profile" className="flex items-center space-x-2.5 hover:opacity-90 transition-opacity">
-            <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-white/60 shadow-xs">
+            <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-pink-500/60 shadow-xs">
               <img
                 src={user?.profileImage || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde'}
                 alt={user?.firstName || 'You'}
@@ -302,7 +302,7 @@ const Explore = () => {
           <div className="flex items-center space-x-1.5 sm:space-x-2">
             <button 
               onClick={() => navigate('/feed')}
-              className="w-9 h-9 rounded-full bg-black/35 hover:bg-black/55 text-purple-300 flex items-center justify-center text-sm font-black shadow-xs cursor-pointer hover:scale-105 transition-transform"
+              className="w-9 h-9 rounded-full bg-[#202533] hover:bg-[#2a3142] text-purple-300 flex items-center justify-center text-sm font-black shadow-xs cursor-pointer hover:scale-105 transition-transform"
               title="Feed / Recs (⚡)"
             >
               ⚡
@@ -315,15 +315,15 @@ const Explore = () => {
               🧭
             </button>
             <button 
-              onClick={() => navigate('/connections')}
-              className="w-9 h-9 rounded-full bg-black/35 hover:bg-black/55 text-white flex items-center justify-center text-sm font-bold shadow-xs cursor-pointer hover:scale-105 transition-transform"
+              onClick={() => navigate('/feed?tab=matches')}
+              className="w-9 h-9 rounded-full bg-[#202533] hover:bg-[#2a3142] text-white flex items-center justify-center text-sm font-bold shadow-xs cursor-pointer hover:scale-105 transition-transform"
               title="Matches & Connections"
             >
               💼
             </button>
             <button 
-              onClick={() => navigate('/notifications')}
-              className="w-9 h-9 rounded-full bg-black/35 hover:bg-black/55 text-white flex items-center justify-center text-sm font-bold shadow-xs cursor-pointer hover:scale-105 transition-transform relative"
+              onClick={() => navigate('/feed')}
+              className="w-9 h-9 rounded-full bg-[#202533] hover:bg-[#2a3142] text-white flex items-center justify-center text-sm font-bold shadow-xs cursor-pointer hover:scale-105 transition-transform relative"
               title="Notifications"
             >
               🔔
@@ -335,7 +335,7 @@ const Explore = () => {
             </button>
             <button 
               onClick={() => navigate('/settings')}
-              className="w-9 h-9 rounded-full bg-black/35 hover:bg-black/55 text-white flex items-center justify-center text-sm font-bold shadow-xs cursor-pointer hover:scale-105 transition-transform"
+              className="w-9 h-9 rounded-full bg-[#202533] hover:bg-[#2a3142] text-white flex items-center justify-center text-sm font-bold shadow-xs cursor-pointer hover:scale-105 transition-transform"
               title="Safety & Settings"
             >
               🛡️
@@ -345,13 +345,14 @@ const Explore = () => {
         </div>
 
         {/* Explore Sub-Header Title */}
-        <div className="p-4 pb-2 border-b border-gray-100">
-          <h3 className="text-xs sm:text-sm font-bold text-gray-800 leading-snug">
+        <div className="p-4 pb-2 border-b border-[#1f242e]">
+          <h2 className="text-xl font-black text-white">Explore</h2>
+          <p className="text-xs font-semibold text-gray-400 leading-snug">
             Find people with similar relationship goals
-          </h3>
+          </p>
         </div>
 
-        {/* 2-Column Grid of 3D Explore Category Cards (Exact Match to Picture 2) */}
+        {/* 2-Column Grid of 3D Explore Category Cards (Exact Match to Video 0:21) */}
         <div className="flex-1 overflow-y-auto p-3.5 space-y-3">
           <div className="grid grid-cols-2 gap-3">
             {EXPLORE_CATEGORIES.map((cat) => {
@@ -360,8 +361,8 @@ const Explore = () => {
                 <button
                   key={cat.id}
                   onClick={() => handleSelectCategory(cat.id)}
-                  className={`bg-gradient-to-b ${cat.color} rounded-2xl p-3.5 flex flex-col justify-between aspect-4/5 text-white shadow-md cursor-pointer transition-all duration-200 text-left relative overflow-hidden group hover:scale-[1.02] ${
-                    isSelected ? 'ring-3 ring-[#fe3c72] shadow-xl' : 'hover:shadow-lg'
+                  className={`bg-gradient-to-b ${cat.color} rounded-2xl p-4 flex flex-col justify-between aspect-4/5 text-white shadow-xl cursor-pointer transition-all duration-200 text-left relative overflow-hidden group hover:scale-[1.02] border border-white/10 ${
+                    isSelected ? 'ring-3 ring-[#fe3c72] shadow-2xl' : 'hover:border-white/25'
                   }`}
                 >
                   {/* Glossy 3D Illustration */}
@@ -378,7 +379,7 @@ const Explore = () => {
 
                   {/* Selected Badge */}
                   {isSelected && (
-                    <div className="absolute top-2 right-2 w-2.5 h-2.5 rounded-full bg-[#fe3c72] shadow-xs animate-ping" />
+                    <div className="absolute top-2.5 right-2.5 w-3 h-3 rounded-full bg-[#fe3c72] shadow-xs animate-ping" />
                   )}
                 </button>
               );

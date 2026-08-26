@@ -76,170 +76,182 @@ const Profile = () => {
   if (profile?.favoriteArtist) score += 10;
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 pt-36 pb-20 px-4 sm:px-6 lg:px-8 font-sans">
-      <div className="max-w-2xl mx-auto space-y-6">
+    <div className="min-h-screen bg-[#000000] text-white pt-24 pb-24 px-4 sm:px-6 lg:px-8 font-sans select-none">
+      <div className="max-w-md mx-auto space-y-4">
         
-        {/* Profile Card Header */}
-        <div className="bg-white rounded-2xl p-6 sm:p-8 shadow-2xs border border-slate-200 flex flex-col sm:flex-row items-center sm:items-start space-y-4 sm:space-y-0 sm:space-x-6 text-center sm:text-left">
-          
-          <div className="relative shrink-0">
-            <img
-              src={photos[0]}
-              alt={profile?.firstName}
-              className="w-24 h-24 rounded-2xl object-cover border-2 border-slate-200 shadow-xs"
-            />
-            {profile?.isVerified && (
-              <span className="absolute -bottom-1.5 -right-1.5 bg-blue-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full border-2 border-white shadow-2xs" title="Verified Profile">
-                ✓
+        {/* Profile Card Header (Matching Video 0:48) */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-3.5">
+            {/* Avatar with Progress Ring */}
+            <div className="relative w-16 h-16 rounded-full p-0.5 border-2 border-pink-500">
+              <img
+                src={photos[0]}
+                alt={profile?.firstName}
+                className="w-full h-full rounded-full object-cover"
+              />
+              <span className="absolute -bottom-1 -right-1 bg-red-600 text-white text-[9px] font-black px-1.5 py-0.2 rounded-full border border-black">
+                {score}%
               </span>
-            )}
-          </div>
-
-          <div className="flex-1 space-y-2">
-            <div className="flex flex-col sm:flex-row sm:items-baseline sm:space-x-3">
-              <h1 className="text-2xl font-bold text-slate-900">{profile?.firstName} {profile?.lastName}</h1>
-              <span className="text-base font-semibold text-slate-500">{profile?.age || 24}</span>
             </div>
 
-            <p className="text-xs text-slate-500 font-medium">
-              {profile?.job || 'Software Engineer'} &bull; {profile?.location || 'Remote'}
-            </p>
-
-            {/* Profile Completeness Meter */}
-            <div className="pt-2">
-              <div className="flex justify-between items-center text-[10px] font-semibold text-slate-500 mb-1">
-                <span>Profile Completeness</span>
-                <span className="text-slate-900 font-bold">{score}%</span>
-              </div>
-              <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
-                <div
-                  className="bg-[#fe3c72] h-full rounded-full transition-all duration-500"
-                  style={{ width: `${score}%` }}
-                />
-              </div>
-            </div>
-
-            {/* Edit & Settings Action Buttons */}
-            <div className="flex flex-wrap gap-2 pt-2">
-              <Link
-                to="/profile/edit"
-                className="bg-[#fe3c72] hover:bg-[#e03463] text-white text-xs font-semibold px-4 py-1.5 rounded-full shadow-2xs transition-all"
-              >
-                Edit Profile
-              </Link>
-              <Link
-                to="/settings"
-                className="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold px-4 py-1.5 rounded-full transition-all border border-slate-200"
-              >
-                Settings
-              </Link>
-            </div>
-
-          </div>
-        </div>
-
-        {/* Verification Status Card */}
-        <div className="bg-white rounded-2xl p-5 shadow-2xs border border-slate-200 flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 rounded-xl bg-slate-100 text-slate-700 flex items-center justify-center shrink-0">
-              <ShieldIcon className="w-5 h-5 text-slate-600" />
-            </div>
             <div>
-              <div className="font-bold text-xs text-slate-900">
-                {profile?.isVerified ? 'Official Profile Verified' : profile?.verificationStatus === 'pending' ? 'Verification Request Under Review' : 'Profile Unverified'}
+              <div className="flex items-center space-x-1.5">
+                <h1 className="text-xl font-black text-white">{profile?.firstName} {profile?.lastName}</h1>
+                {profile?.isVerified && (
+                  <span className="w-4 h-4 rounded-full bg-[#1d9bf0] text-white flex items-center justify-center text-[9px] font-black">
+                    ✓
+                  </span>
+                )}
               </div>
-              <div className="text-[11px] text-slate-500 mt-0.5">
-                {profile?.isVerified ? 'Your identity is confirmed with an official checkmark.' : profile?.verificationStatus === 'pending' ? 'Our moderation team is reviewing your verification application.' : 'Submit a verification request to receive an official badge.'}
-              </div>
+              <p className="text-xs text-gray-400 font-medium">
+                {profile?.job || 'Developer'} &bull; {profile?.age || 21}
+              </p>
             </div>
           </div>
 
-          {!profile?.isVerified && profile?.verificationStatus !== 'pending' && (
-            <button
-              onClick={() => setShowVerifyModal(true)}
-              className="bg-slate-900 hover:bg-black text-white font-semibold text-xs px-4 py-2 rounded-full transition-all cursor-pointer shrink-0"
+          {/* Action Buttons: Edit Profile & Settings Gear */}
+          <div className="flex items-center space-x-2">
+            <Link
+              to="/profile/edit"
+              className="bg-[#1c202a] hover:bg-[#252b38] text-white text-xs font-bold px-3.5 py-2 rounded-full border border-[#2d3444] transition-colors"
             >
-              Get Verified
+              Edit profile
+            </Link>
+            <button
+              onClick={() => navigate('/settings')}
+              className="w-9 h-9 rounded-full bg-[#1c202a] hover:bg-[#252b38] text-gray-300 flex items-center justify-center text-sm font-bold border border-[#2d3444] cursor-pointer transition-colors"
+              title="Settings"
+            >
+              ⚙️
             </button>
-          )}
+          </div>
         </div>
 
-        {/* Photos Gallery */}
-        <div className="bg-white rounded-2xl p-6 shadow-2xs border border-slate-200 space-y-3">
-          <div className="flex justify-between items-center">
-            <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Photo Gallery ({photos.length})</h3>
-            <Link to="/profile/edit" className="text-xs font-semibold text-slate-700 hover:text-[#fe3c72]">Manage Photos →</Link>
+        {/* Profile Completeness Bar */}
+        <div className="bg-[#12151d] p-3.5 rounded-2xl border border-[#222838] space-y-1.5">
+          <div className="flex justify-between text-[11px] font-bold text-gray-400">
+            <span>Complete your profile to be seen by more people!</span>
+            <span className="text-pink-500">{score}%</span>
           </div>
-          <div className="grid grid-cols-3 gap-2.5">
+          <div className="w-full bg-[#202533] h-1.5 rounded-full overflow-hidden">
+            <div className="bg-gradient-to-r from-amber-500 to-pink-500 h-full rounded-full" style={{ width: `${score}%` }} />
+          </div>
+        </div>
+
+        {/* 3 Quick Profile Action Cards (Video 0:48) */}
+        <div className="space-y-2">
+          <Link
+            to="/profile/edit"
+            className="bg-[#12151d] hover:bg-[#181c26] p-3.5 rounded-2xl border border-[#222838] flex items-center justify-between transition-colors block"
+          >
+            <div className="flex items-center space-x-3">
+              <span className="text-xl">📷</span>
+              <div>
+                <h4 className="text-xs font-bold text-white">Add at least 4 photos</h4>
+                <p className="text-[10px] text-gray-400">Get up to 2x more Likes with 6 pics.</p>
+              </div>
+            </div>
+            <span className="text-gray-500 text-sm">›</span>
+          </Link>
+
+          <Link
+            to="/profile/edit"
+            className="bg-[#12151d] hover:bg-[#181c26] p-3.5 rounded-2xl border border-[#222838] flex items-center justify-between transition-colors block"
+          >
+            <div className="flex items-center space-x-3">
+              <span className="text-xl">✏️</span>
+              <div>
+                <h4 className="text-xs font-bold text-white">Add "About Me"</h4>
+                <p className="text-[10px] text-gray-400">Get up to 25% more matches with an intro.</p>
+              </div>
+            </div>
+            <span className="text-gray-500 text-sm">›</span>
+          </Link>
+
+          <Link
+            to="/profile/edit"
+            className="bg-[#12151d] hover:bg-[#181c26] p-3.5 rounded-2xl border border-[#222838] flex items-center justify-between transition-colors block"
+          >
+            <div className="flex items-center space-x-3">
+              <span className="text-xl">💬</span>
+              <div>
+                <h4 className="text-xs font-bold text-white">Add a prompt</h4>
+                <p className="text-[10px] text-gray-400">Show off your personality to spark better conversations.</p>
+              </div>
+            </div>
+            <span className="text-gray-500 text-sm">›</span>
+          </Link>
+        </div>
+
+        {/* Boosts & Super Likes Row */}
+        <div className="grid grid-cols-2 gap-2.5">
+          <div className="bg-[#12151d] p-3 rounded-2xl border border-[#222838] flex items-center justify-between">
+            <div className="flex items-center space-x-2">
+              <span className="text-blue-400 text-base">⭐</span>
+              <div>
+                <h5 className="text-[11px] font-bold text-white">0 Super Likes</h5>
+                <p className="text-[9px] text-gray-400">Get more</p>
+              </div>
+            </div>
+            <span className="w-6 h-6 rounded-full bg-[#1e2330] text-white flex items-center justify-center text-xs font-bold">+</span>
+          </div>
+
+          <div className="bg-[#12151d] p-3 rounded-2xl border border-[#222838] flex items-center justify-between">
+            <div className="flex items-center space-x-2">
+              <span className="text-purple-400 text-base">⚡</span>
+              <div>
+                <h5 className="text-[11px] font-bold text-white">My Boosts</h5>
+                <p className="text-[9px] text-gray-400">Get more</p>
+              </div>
+            </div>
+            <span className="w-6 h-6 rounded-full bg-[#1e2330] text-white flex items-center justify-center text-xs font-bold">+</span>
+          </div>
+        </div>
+
+        {/* DEVMEET GOLD BANNER (Matching Video 0:50) */}
+        <div className="bg-gradient-to-r from-amber-500/20 via-yellow-500/10 to-amber-600/20 rounded-3xl p-5 border border-amber-500/40 shadow-xl space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-2">
+              <span className="text-xl">👑</span>
+              <h3 className="font-black text-base text-amber-400 tracking-wider">DEVMEET GOLD</h3>
+            </div>
+            <button className="bg-white text-black font-black text-[10px] px-3.5 py-1.5 rounded-full uppercase tracking-wider shadow-md hover:scale-105 transition-transform cursor-pointer">
+              Upgrade
+            </button>
+          </div>
+
+          <div className="space-y-1.5 text-xs">
+            <div className="flex justify-between text-gray-300">
+              <span>See Who Likes You</span>
+              <span className="text-amber-400 font-bold">✓ Included</span>
+            </div>
+            <div className="flex justify-between text-gray-300">
+              <span>Top Picks Daily</span>
+              <span className="text-amber-400 font-bold">✓ Included</span>
+            </div>
+            <div className="flex justify-between text-gray-300">
+              <span>Free Super Likes Weekly</span>
+              <span className="text-amber-400 font-bold">✓ Included</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Photo Gallery Grid */}
+        <div className="bg-[#12151d] rounded-2xl p-4 border border-[#222838] space-y-3">
+          <div className="flex justify-between items-center">
+            <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider">Photos ({photos.length})</h3>
+            <Link to="/profile/edit" className="text-xs font-bold text-[#fe3c72] hover:underline">Manage Photos →</Link>
+          </div>
+          <div className="grid grid-cols-3 gap-2">
             {photos.map((p, idx) => (
               <img
                 key={idx}
                 src={p}
                 alt="Profile snapshot"
-                className="aspect-3/4 w-full object-cover rounded-xl border border-slate-200"
+                className="aspect-3/4 w-full object-cover rounded-xl border border-[#222838]"
               />
             ))}
           </div>
-        </div>
-
-        {/* Bio & Details */}
-        <div className="bg-white rounded-2xl p-6 shadow-2xs border border-slate-200 space-y-4">
-          <div>
-            <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">About</h3>
-            <p className="text-xs text-slate-700 leading-relaxed font-medium">
-              {profile?.bio || 'No bio added yet. Click edit profile to tell others about yourself.'}
-            </p>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3 pt-2">
-            {profile?.relationshipGoal && (
-              <div className="bg-slate-50 p-3 rounded-xl border border-slate-200">
-                <span className="text-[10px] text-slate-500 font-semibold uppercase block">Looking For</span>
-                <span className="text-xs font-bold text-slate-900 capitalize">{profile.relationshipGoal.replace('-', ' ')}</span>
-              </div>
-            )}
-            {profile?.zodiacSign && (
-              <div className="bg-slate-50 p-3 rounded-xl border border-slate-200">
-                <span className="text-[10px] text-slate-500 font-semibold uppercase block">Zodiac</span>
-                <span className="text-xs font-bold text-slate-900 capitalize">{profile.zodiacSign}</span>
-              </div>
-            )}
-          </div>
-
-          {profile?.favoriteArtist && (
-            <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200">
-              <span className="text-[10px] text-slate-500 font-semibold uppercase block">Favorite Artist / Track</span>
-              <p className="text-xs font-bold text-slate-900 mt-0.5">
-                {profile.favoriteArtist} {profile.favoriteSong ? `— "${profile.favoriteSong}"` : ''}
-              </p>
-            </div>
-          )}
-
-          {profile?.skills?.length > 0 && (
-            <div>
-              <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Tech Stack</h3>
-              <div className="flex flex-wrap gap-1.5">
-                {profile.skills.map((s, idx) => (
-                  <span key={idx} className="bg-slate-100 text-slate-800 text-xs font-semibold px-2.5 py-1 rounded-lg">
-                    {s}
-                  </span>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {profile?.interests?.length > 0 && (
-            <div>
-              <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Interests</h3>
-              <div className="flex flex-wrap gap-1.5">
-                {profile.interests.map((i, idx) => (
-                  <span key={idx} className="bg-red-50 text-red-700 border border-red-100 text-xs font-semibold px-2.5 py-1 rounded-lg">
-                    #{i}
-                  </span>
-                ))}
-              </div>
-            </div>
-          )}
         </div>
 
       </div>

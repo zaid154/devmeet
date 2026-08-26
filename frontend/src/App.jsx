@@ -17,9 +17,9 @@ import Search from './pages/Search';
 import Explore from './pages/Explore';
 import Chat from './pages/Chat';
 import ForgotPassword from './pages/ForgotPassword';
-import ResetPassword from './pages/ResetPassword';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { SocketProvider } from './context/SocketContext';
+import MobileBottomNav from './components/MobileBottomNav';
 
 // Admin imports
 import { AdminProvider, useAdmin } from './admin/context/AdminContext';
@@ -118,6 +118,7 @@ function AppContent() {
       </main>
 
       <Footer />
+      <MobileBottomNav />
     </div>
   );
 }
