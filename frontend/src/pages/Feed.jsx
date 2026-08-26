@@ -8,7 +8,7 @@ import { BASE_URL } from '../utils/constants';
 
 const Feed = () => {
   const { user } = useAuth();
-  const { socket, unreadNotifications } = useSocket();
+  const { socket, unreadNotifications, setUnreadNotifications } = useSocket();
   const navigate = useNavigate();
 
   // Feed State
@@ -29,6 +29,11 @@ const Feed = () => {
   const [matchesList, setMatchesList] = useState([]);
   const [requestsList, setRequestsList] = useState([]);
   const [conversations, setConversations] = useState([]);
+
+  // Notifications Drawer in Feed
+  const [showNotificationsDrawer, setShowNotificationsDrawer] = useState(false);
+  const [notificationsList, setNotificationsList] = useState([]);
+  const [loadingNotifications, setLoadingNotifications] = useState(false);
 
   // Profile Details Expand Drawer
   const [isProfileExpanded, setIsProfileExpanded] = useState(false);
@@ -130,6 +135,44 @@ const Feed = () => {
     } catch (e) {
       console.error(e);
     }
+  };
+
+  const fetchNotifications = async () => {
+    setLoadingNotifications(true);
+    try {
+      const res = await axios.get(`${BASE_URL}/notifications`, { withCredentials: true });
+      if (res.data?.status) {
+        setNotificationsList(res.data.data || []);
+      }
+    } catch (e) {
+    } finally {
+      setLoadingNotifications(false);
+    }
+  };
+
+  const handleOpenNotifications = () => {
+    setShowNotificationsDrawer(true);
+    fetchNotifications();
+  };
+
+  const markNotificationAsRead = async (id) => {
+    try {
+      await axios.patch(`${BASE_URL}/notifications/${id}/read`, {}, { withCredentials: true });
+      setNotificationsList(prev => prev.map(n => n._id === id ? { ...n, read: true } : n));
+      if (unreadNotifications > 0 && typeof setUnreadNotifications === 'function') {
+        setUnreadNotifications(prev => Math.max(0, prev - 1));
+      }
+    } catch (e) {}
+  };
+
+  const markAllNotificationsAsRead = async () => {
+    try {
+      await axios.patch(`${BASE_URL}/notifications/read-all`, {}, { withCredentials: true });
+      setNotificationsList(prev => prev.map(n => ({ ...n, read: true })));
+      if (typeof setUnreadNotifications === 'function') {
+        setUnreadNotifications(0);
+      }
+    } catch (e) {}
   };
 
   const handleResetFeed = async () => {
@@ -395,13 +438,13 @@ const Feed = () => {
               💼
             </button>
             <button 
-              onClick={() => navigate('/notifications')}
+              onClick={handleOpenNotifications}
               className="w-9 h-9 rounded-full bg-black/35 hover:bg-black/55 text-white flex items-center justify-center text-sm font-bold shadow-xs cursor-pointer hover:scale-105 transition-transform relative"
               title="Notifications"
             >
               🔔
               {unreadNotifications > 0 && (
-                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
+                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center animate-pulse">
                   {unreadNotifications}
                 </span>
               )}
@@ -945,6 +988,107 @@ const Feed = () => {
                 Keep Swiping
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+
+      {/* ============================================================ */}
+      {/* 4. NOTIFICATIONS DRAWER IN FEED */}
+      {/* ============================================================ */}
+      {showNotificationsDrawer && (
+        <div className="fixed inset-0 z-50 flex justify-end bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
+          <div className="w-full max-w-md bg-white h-full shadow-2xl flex flex-col justify-between animate-in slide-in-from-right duration-300">
+            
+            {/* Header */}
+            <div className="p-5 border-b border-gray-100 flex items-center justify-between bg-slate-900 text-white">
+              <div className="flex items-center space-x-2">
+                <span className="text-lg">🔔</span>
+                <div>
+                  <h3 className="font-bold text-base tracking-tight text-white">Notifications</h3>
+                  <p className="text-[11px] text-slate-300">Matches, likes, and platform updates</p>
+                </div>
+              </div>
+
+              <div className="flex items-center space-x-2">
+                {notificationsList.some(n => !n.read) && (
+                  <button
+                    onClick={markAllNotificationsAsRead}
+                    className="text-[11px] font-bold text-pink-400 hover:text-pink-300 transition-colors cursor-pointer"
+                  >
+                    Mark all read
+                  </button>
+                )}
+                <button
+                  onClick={() => setShowNotificationsDrawer(false)}
+                  className="w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 text-white flex items-center justify-center font-bold text-xs cursor-pointer ml-1"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+
+            {/* List */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-2.5">
+              {loadingNotifications ? (
+                <div className="p-12 text-center text-slate-400 space-y-3">
+                  <div className="w-7 h-7 border-2 border-[#fe3c72] border-t-transparent rounded-full animate-spin mx-auto"></div>
+                  <p className="text-xs font-semibold">Loading updates...</p>
+                </div>
+              ) : notificationsList.length === 0 ? (
+                <div className="p-12 text-center text-slate-400 space-y-2 my-auto">
+                  <div className="w-14 h-14 rounded-full bg-slate-100 mx-auto flex items-center justify-center text-2xl text-slate-400">
+                    🔔
+                  </div>
+                  <h4 className="font-bold text-sm text-slate-800">No Notifications</h4>
+                  <p className="text-xs text-slate-500">You're all caught up! Likes and matches will appear here.</p>
+                </div>
+              ) : (
+                notificationsList.map((n) => {
+                  return (
+                    <div
+                      key={n._id}
+                      onClick={() => {
+                        if (!n.read) markNotificationAsRead(n._id);
+                        if (n.type === 'match' || n.type === 'message') {
+                          setShowNotificationsDrawer(false);
+                          setSidebarTab(n.type === 'match' ? 'Matches' : 'Messages');
+                        }
+                      }}
+                      className={`p-3.5 rounded-2xl border transition-all flex items-start space-x-3 cursor-pointer ${
+                        n.read
+                          ? 'bg-slate-50/70 border-slate-100 text-slate-600'
+                          : 'bg-white border-pink-200 ring-1 ring-pink-100 text-slate-900 shadow-xs'
+                      }`}
+                    >
+                      <div className="w-9 h-9 rounded-full bg-pink-50 text-pink-600 flex items-center justify-center font-bold text-sm shrink-0 mt-0.5">
+                        {n.type === 'match' ? '💖' : n.type === 'message' ? '💬' : '🔔'}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between">
+                          <h5 className="text-xs font-bold text-slate-900 truncate">{n.title}</h5>
+                          <span className="text-[10px] text-slate-400 font-mono">
+                            {new Date(n.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                        </div>
+                        <p className="text-xs text-slate-600 mt-0.5 leading-relaxed">{n.message || n.body}</p>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="p-3 border-t border-gray-100 bg-gray-50 text-center">
+              <button
+                onClick={() => setShowNotificationsDrawer(false)}
+                className="w-full bg-slate-900 hover:bg-black text-white font-bold py-2.5 rounded-xl text-xs transition-all cursor-pointer shadow-xs"
+              >
+                Close
+              </button>
+            </div>
+
           </div>
         </div>
       )}

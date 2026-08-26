@@ -37,7 +37,7 @@ const Header = () => {
     { name: 'Search', path: '/search', icon: SearchIcon },
     { name: 'Matches', path: '/feed', icon: HeartIcon },
     { name: 'Messages', path: '/chat', icon: ChatIcon },
-    { name: 'Notifications', path: '/notifications', icon: BellIcon, badge: unreadNotifications }
+    { name: 'Notifications', path: '/feed', icon: BellIcon, badge: unreadNotifications }
   ];
 
   const [showLangModal, setShowLangModal] = useState(false);
