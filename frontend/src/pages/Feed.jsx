@@ -24,9 +24,10 @@ const Feed = () => {
   const [isDragging, setIsDragging] = useState(false);
   const [animatingSwipe, setAnimatingSwipe] = useState(null); // 'like' | 'nope' | 'super-like'
 
-  // Sidebar Tab ('Matches' | 'Messages')
+  // Sidebar Tab ('Matches' | 'Requests' | 'Messages')
   const [sidebarTab, setSidebarTab] = useState('Matches');
   const [matchesList, setMatchesList] = useState([]);
+  const [requestsList, setRequestsList] = useState([]);
   const [conversations, setConversations] = useState([]);
 
   // Profile Details Expand Drawer
@@ -103,9 +104,32 @@ const Feed = () => {
       const matchRes = await axios.get(`${BASE_URL}/user/matches`, { withCredentials: true });
       if (matchRes.data?.status) setMatchesList(matchRes.data.data || []);
       
+      const reqRes = await axios.get(`${BASE_URL}/user/request/received`, { withCredentials: true });
+      if (reqRes.data?.status) setRequestsList(reqRes.data.data || []);
+
       const convRes = await axios.get(`${BASE_URL}/chat/conversations`, { withCredentials: true });
       if (convRes.data?.status) setConversations(convRes.data.data || []);
     } catch (e) {}
+  };
+
+  const handleAcceptRequest = async (reqId) => {
+    try {
+      const res = await axios.patch(`${BASE_URL}/request/${reqId}/accepted`, {}, { withCredentials: true });
+      if (res.data?.status) {
+        fetchMatchesAndMessages();
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleRejectRequest = async (reqId) => {
+    try {
+      await axios.patch(`${BASE_URL}/request/${reqId}/rejected`, {}, { withCredentials: true });
+      fetchMatchesAndMessages();
+    } catch (e) {
+      console.error(e);
+    }
   };
 
   const handleResetFeed = async () => {
@@ -393,7 +417,7 @@ const Feed = () => {
 
         </div>
 
-        {/* Tab Switcher: Matches vs Messages */}
+        {/* Tab Switcher: Matches vs Likes vs Messages */}
         <div className="flex border-b border-gray-200 text-xs font-bold text-gray-700 bg-white">
           <button
             onClick={() => setSidebarTab('Matches')}
@@ -403,9 +427,33 @@ const Feed = () => {
                 : 'text-gray-500 hover:text-gray-900'
             }`}
           >
-            Matches
+            <span>Matches</span>
+            {matchesList.length > 0 && (
+              <span className="ml-1.5 bg-gray-100 text-gray-800 text-[10px] font-bold px-1.5 py-0.5 rounded-full">
+                {matchesList.length}
+              </span>
+            )}
             {sidebarTab === 'Matches' && (
-              <div className="absolute bottom-0 left-1/4 right-1/4 h-0.5 bg-[#e01438] rounded-full" />
+              <div className="absolute bottom-0 left-2 right-2 h-0.5 bg-[#e01438] rounded-full" />
+            )}
+          </button>
+
+          <button
+            onClick={() => setSidebarTab('Requests')}
+            className={`flex-1 py-3 text-center cursor-pointer transition-all relative ${
+              sidebarTab === 'Requests'
+                ? 'text-gray-900 font-extrabold'
+                : 'text-gray-500 hover:text-gray-900'
+            }`}
+          >
+            <span>Likes</span>
+            {requestsList.length > 0 && (
+              <span className="ml-1.5 bg-gradient-to-r from-amber-500 to-rose-500 text-white text-[10px] font-black px-1.5 py-0.5 rounded-full animate-pulse">
+                {requestsList.length}
+              </span>
+            )}
+            {sidebarTab === 'Requests' && (
+              <div className="absolute bottom-0 left-2 right-2 h-0.5 bg-[#e01438] rounded-full" />
             )}
           </button>
 
@@ -417,24 +465,30 @@ const Feed = () => {
                 : 'text-gray-500 hover:text-gray-900'
             }`}
           >
-            Messages
+            <span>Messages</span>
+            {conversations.length > 0 && (
+              <span className="ml-1.5 bg-gray-100 text-gray-800 text-[10px] font-bold px-1.5 py-0.5 rounded-full">
+                {conversations.length}
+              </span>
+            )}
             {sidebarTab === 'Messages' && (
-              <div className="absolute bottom-0 left-1/4 right-1/4 h-0.5 bg-[#e01438] rounded-full" />
+              <div className="absolute bottom-0 left-2 right-2 h-0.5 bg-[#e01438] rounded-full" />
             )}
           </button>
         </div>
 
         {/* Tab Content */}
-        <div className="flex-1 overflow-y-auto p-4 flex flex-col justify-center text-center">
+        <div className="flex-1 overflow-y-auto p-4 flex flex-col justify-start">
           
+          {/* TAB 1: MATCHES */}
           {sidebarTab === 'Matches' && (
             matchesList.length > 0 ? (
               <div className="grid grid-cols-3 gap-2.5">
                 {matchesList.map((m) => (
                   <Link key={m._id} to="/chat" className="text-center group">
-                    <div className="aspect-3/4 rounded-xl overflow-hidden border border-gray-200 group-hover:border-[#fe3c72] transition-colors relative">
+                    <div className="aspect-3/4 rounded-xl overflow-hidden border border-gray-200 group-hover:border-[#fe3c72] transition-colors relative shadow-xs">
                       <img src={m.profileImage || m.photos?.[0]} alt={m.firstName} className="w-full h-full object-cover" />
-                      <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/80 to-transparent p-1 text-[10px] text-white font-bold truncate">
+                      <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/80 to-transparent p-1.5 text-[10px] text-white font-bold truncate">
                         {m.firstName}
                       </div>
                     </div>
@@ -442,22 +496,89 @@ const Feed = () => {
                 ))}
               </div>
             ) : (
-              /* Empty State Matching Screenshot 3 */
-              <div className="space-y-4 max-w-xs mx-auto my-auto">
-                <div className="w-28 h-44 rounded-2xl bg-[#c8102e] shadow-lg mx-auto flex items-center justify-center">
+              <div className="space-y-4 max-w-xs mx-auto my-auto text-center">
+                <div className="w-24 h-36 rounded-2xl bg-[#c8102e] shadow-lg mx-auto flex items-center justify-center text-white text-3xl">
+                  ❤️
                 </div>
-                
-                <h3 className="text-2xl font-black text-gray-900 tracking-tight">
+                <h3 className="text-xl font-black text-gray-900 tracking-tight">
                   Start Matching
                 </h3>
-                
-                <p className="text-xs text-gray-500 leading-relaxed font-medium max-w-[260px] mx-auto">
-                  Matches will appear here once you start to Like people. You can message them directly from here when you're ready to spark up the conversation.
+                <p className="text-xs text-gray-500 leading-relaxed font-medium max-w-[240px] mx-auto">
+                  Matches will appear here once you both Like each other. You can message them directly when ready!
                 </p>
               </div>
             )
           )}
 
+          {/* TAB 2: LIKES / INCOMING REQUESTS */}
+          {sidebarTab === 'Requests' && (
+            requestsList.length > 0 ? (
+              <div className="space-y-3 text-left">
+                {requestsList.map((req) => {
+                  const fromUser = req.fromUserId || {};
+                  return (
+                    <div
+                      key={req._id}
+                      className="bg-white border border-gray-200 hover:border-pink-300 p-3 rounded-2xl shadow-xs transition-all flex items-center justify-between gap-3"
+                    >
+                      <div className="flex items-center space-x-2.5 min-w-0">
+                        <img
+                          src={fromUser.profileImage || fromUser.photos?.[0] || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb'}
+                          alt={fromUser.firstName}
+                          className="w-12 h-12 rounded-xl object-cover border shrink-0"
+                        />
+                        <div className="min-w-0">
+                          <h4 className="text-xs font-black text-gray-900 truncate">
+                            {fromUser.firstName}, {fromUser.age || 24}
+                          </h4>
+                          <p className="text-[11px] text-gray-500 truncate">
+                            {fromUser.job || fromUser.location || 'Interested in you'}
+                          </p>
+                          {req.status === 'super-like' && (
+                            <span className="text-[9px] font-bold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded">
+                              ⭐ Super Liked you
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Action buttons */}
+                      <div className="flex items-center space-x-1.5 shrink-0">
+                        <button
+                          onClick={() => handleRejectRequest(req._id)}
+                          className="w-8 h-8 rounded-full bg-gray-100 hover:bg-red-50 text-gray-500 hover:text-red-600 flex items-center justify-center font-bold text-xs cursor-pointer transition-colors"
+                          title="Pass"
+                        >
+                          ✕
+                        </button>
+                        <button
+                          onClick={() => handleAcceptRequest(req._id)}
+                          className="w-8 h-8 rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 hover:opacity-90 text-white flex items-center justify-center font-bold text-xs cursor-pointer shadow-xs transition-opacity"
+                          title="Match / Accept"
+                        >
+                          💚
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="space-y-4 max-w-xs mx-auto my-auto text-center">
+                <div className="w-16 h-16 rounded-full bg-amber-50 mx-auto flex items-center justify-center text-2xl">
+                  ✨
+                </div>
+                <h3 className="text-xl font-black text-gray-900 tracking-tight">
+                  No Pending Likes
+                </h3>
+                <p className="text-xs text-gray-500 leading-relaxed font-medium max-w-[240px] mx-auto">
+                  When someone likes or super likes your profile, they will appear here so you can match back!
+                </p>
+              </div>
+            )
+          )}
+
+          {/* TAB 3: MESSAGES */}
           {sidebarTab === 'Messages' && (
             conversations.length > 0 ? (
               <div className="space-y-2 text-left">
@@ -481,8 +602,8 @@ const Feed = () => {
                   💬
                 </div>
                 <h4 className="text-base font-black text-gray-900">Say Hello</h4>
-                <p className="text-xs text-gray-500 leading-relaxed">
-                  Looking to strike up a conversation? When you match with others, you can send them a message here.
+                <p className="text-xs text-gray-500 leading-relaxed font-medium max-w-[240px] mx-auto">
+                  Looking to strike up a conversation? When you match with others, you can message them directly here.
                 </p>
               </div>
             )

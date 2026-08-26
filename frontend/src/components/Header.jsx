@@ -35,7 +35,7 @@ const Header = () => {
   const inAppNavLinks = [
     { name: 'Discover', path: '/feed', icon: FlameIcon },
     { name: 'Search', path: '/search', icon: SearchIcon },
-    { name: 'Matches', path: '/connections', icon: HeartIcon },
+    { name: 'Matches', path: '/feed', icon: HeartIcon },
     { name: 'Messages', path: '/chat', icon: ChatIcon },
     { name: 'Notifications', path: '/notifications', icon: BellIcon, badge: unreadNotifications }
   ];
@@ -57,59 +57,11 @@ const Header = () => {
     }
   };
 
-  // Landing Page Header (Exact Match to Picture + Developer Portfolio Banner)
+  // Landing Page Header (Exact Match to Picture)
   if (isLandingPage && !isAuthenticated) {
     return (
       <>
-        <div className="fixed top-0 left-0 w-full z-40 font-sans">
-        
-        {/* Top Developer Portfolio Showcase Banner */}
-        <div className="bg-gradient-to-r from-gray-950 via-slate-900 to-gray-950 text-white text-[11px] py-1.5 px-3 sm:px-8 flex flex-wrap items-center justify-between border-b border-white/10 select-none">
-          <div className="flex items-center space-x-2">
-            <span className="bg-[#c8102e] text-white text-[9px] font-black px-1.5 py-0.5 rounded tracking-wider uppercase">PORTFOLIO PROJECT</span>
-            <span className="text-gray-300 text-[11px] sm:text-xs">
-              Built with ❤️ by <strong className="text-white font-bold">Mohd Zaid</strong>
-            </span>
-          </div>
-
-          <div className="flex items-center space-x-2.5 sm:space-x-4 text-[11px] sm:text-xs pt-1 sm:pt-0">
-            <a 
-              href="https://github.com/zaid154" 
-              target="_blank" 
-              rel="noopener noreferrer" 
-              className="text-gray-300 hover:text-white flex items-center space-x-1 font-semibold transition-colors"
-            >
-              <span>GitHub</span>
-            </a>
-            <span className="text-gray-600">•</span>
-            <a 
-              href="https://www.linkedin.com/in/mohd-zaid-794090231/" 
-              target="_blank" 
-              rel="noopener noreferrer" 
-              className="text-sky-400 hover:text-sky-300 flex items-center space-x-1 font-semibold transition-colors"
-            >
-              <span>LinkedIn</span>
-            </a>
-            <span className="text-gray-600">•</span>
-            <a 
-              href="mailto:zaidm1323@gmail.com" 
-              className="text-gray-300 hover:text-white flex items-center space-x-1 font-semibold transition-colors"
-            >
-              <span>zaidm1323@gmail.com</span>
-            </a>
-            <span className="text-gray-600 hidden sm:inline">•</span>
-            <a 
-              href="https://portfolio-zeta-drab-97.vercel.app/" 
-              target="_blank" 
-              rel="noopener noreferrer" 
-              className="text-pink-400 hover:text-pink-300 font-bold transition-colors hidden sm:inline"
-            >
-              <span>My Portfolio ↗</span>
-            </a>
-          </div>
-        </div>
-
-        <header className="w-full bg-white/95 backdrop-blur-md border-b border-gray-100 py-3 sm:py-3.5 px-4 sm:px-8 lg:px-14 flex items-center justify-between font-sans select-none shadow-xs">
+        <header className="fixed top-0 left-0 w-full z-40 bg-white/95 backdrop-blur-md border-b border-gray-100 py-3 sm:py-3.5 px-4 sm:px-8 lg:px-14 flex items-center justify-between font-sans select-none">
           
           {/* Left: Bold All-Caps Red Brand Logo */}
           <Link to="/" className="flex items-center space-x-1.5 group shrink-0">
@@ -159,7 +111,6 @@ const Header = () => {
           </div>
 
         </header>
-      </div>
 
         {/* Interactive Language Selector Modal */}
         {showLangModal && (
@@ -196,53 +147,6 @@ const Header = () => {
   // In-App Authenticated Header
   return (
     <div className="fixed top-0 left-0 w-full z-40">
-      
-      {/* Top Developer Portfolio Showcase Banner */}
-      <div className="bg-gradient-to-r from-gray-950 via-slate-900 to-gray-950 text-white text-[11px] py-1.5 px-3 sm:px-8 flex flex-wrap items-center justify-between border-b border-white/10 select-none">
-        <div className="flex items-center space-x-2">
-          <span className="bg-[#c8102e] text-white text-[9px] font-black px-1.5 py-0.5 rounded tracking-wider uppercase">PORTFOLIO PROJECT</span>
-          <span className="text-gray-300 text-[11px] sm:text-xs">
-            Built with ❤️ by <strong className="text-white font-bold">Mohd Zaid</strong>
-          </span>
-        </div>
-
-        <div className="flex items-center space-x-2.5 sm:space-x-4 text-[11px] sm:text-xs pt-1 sm:pt-0">
-          <a 
-            href="https://github.com/zaid154" 
-            target="_blank" 
-            rel="noopener noreferrer" 
-            className="text-gray-300 hover:text-white flex items-center space-x-1 font-semibold transition-colors"
-          >
-            <span>GitHub</span>
-          </a>
-          <span className="text-gray-600">•</span>
-          <a 
-            href="https://www.linkedin.com/in/mohd-zaid-794090231/" 
-            target="_blank" 
-            rel="noopener noreferrer" 
-            className="text-sky-400 hover:text-sky-300 flex items-center space-x-1 font-semibold transition-colors"
-          >
-            <span>LinkedIn</span>
-          </a>
-          <span className="text-gray-600">•</span>
-          <a 
-            href="mailto:zaidm1323@gmail.com" 
-            className="text-gray-300 hover:text-white flex items-center space-x-1 font-semibold transition-colors"
-          >
-            <span>zaidm1323@gmail.com</span>
-          </a>
-          <span className="text-gray-600 hidden sm:inline">•</span>
-          <a 
-            href="https://portfolio-zeta-drab-97.vercel.app/" 
-            target="_blank" 
-            rel="noopener noreferrer" 
-            className="text-pink-400 hover:text-pink-300 font-bold transition-colors hidden sm:inline"
-          >
-            <span>My Portfolio ↗</span>
-          </a>
-        </div>
-      </div>
-
       <AnnouncementBanner />
 
       <header className="flex items-center justify-between px-4 sm:px-6 lg:px-12 py-3 w-full bg-white/95 backdrop-blur-md text-slate-900 border-b border-slate-200 shadow-2xs font-sans">
