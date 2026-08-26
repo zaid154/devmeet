@@ -279,7 +279,7 @@ const Onboarding = () => {
                   required
                   value={firstName}
                   onChange={(e) => setFirstName(e.target.value)}
-                  placeholder="Mohd Zaid"
+                  placeholder="e.g. Alex"
                   className="w-full bg-[#f0f2f5] focus:bg-white border-2 border-transparent focus:border-black rounded-2xl px-3.5 py-3 sm:py-3.5 text-sm text-gray-900 outline-none transition-all"
                 />
               </div>
@@ -294,7 +294,7 @@ const Onboarding = () => {
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="zaidm1323@gmail.com"
+                  placeholder="developer@example.com"
                   className="w-full bg-[#f0f2f5] focus:bg-white border-2 border-transparent focus:border-black rounded-2xl px-3.5 py-3 sm:py-3.5 text-sm text-gray-900 outline-none transition-all"
                 />
               </div>

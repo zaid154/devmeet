@@ -427,7 +427,7 @@ const Login = ({ initialMode }) => {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="zaidm1323@gmail.com"
+                placeholder="developer@example.com"
                 className="w-full bg-[#f0f2f5] focus:bg-white border-2 border-transparent focus:border-[#1877F2] text-gray-900 px-4 py-3.5 rounded-2xl text-sm font-semibold outline-none transition-all"
               />
             </div>
@@ -534,7 +534,7 @@ const Login = ({ initialMode }) => {
                 required
                 value={phoneNumber}
                 onChange={(e) => setPhoneNumber(e.target.value.replace(/[^\d]/g, ''))}
-                placeholder="9654664760"
+                placeholder="9876543210"
                 className="flex-1 bg-[#f0f2f5] focus:bg-white border-2 border-transparent focus:border-[#1877F2] text-gray-900 px-4 py-3.5 rounded-xl text-sm font-semibold outline-none transition-colors"
               />
             </div>
