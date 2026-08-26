@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
+import { useSocket } from '../context/SocketContext';
 import { BASE_URL } from '../utils/constants';
 
 const EXPLORE_CATEGORIES = [
@@ -65,6 +66,7 @@ const EXPLORE_CATEGORIES = [
 
 const Explore = () => {
   const { user } = useAuth();
+  const { unreadNotifications } = useSocket();
   const navigate = useNavigate();
 
   const [selectedCategory, setSelectedCategory] = useState('long-term');
@@ -296,8 +298,8 @@ const Explore = () => {
             <span className="font-extrabold text-sm tracking-tight text-white">You</span>
           </Link>
 
-          {/* 4 Circular Action Icons (Explore / Radar Active State) */}
-          <div className="flex items-center space-x-2">
+          {/* 5 Circular Action Icons (Unified Navigation) */}
+          <div className="flex items-center space-x-1.5 sm:space-x-2">
             <button 
               onClick={() => navigate('/feed')}
               className="w-9 h-9 rounded-full bg-black/35 hover:bg-black/55 text-purple-300 flex items-center justify-center text-sm font-black shadow-xs cursor-pointer hover:scale-105 transition-transform"
@@ -308,16 +310,28 @@ const Explore = () => {
             <button 
               onClick={() => navigate('/app/explore')}
               className="w-9 h-9 rounded-full bg-white text-gray-900 flex items-center justify-center text-sm font-bold shadow-md cursor-pointer hover:scale-105 transition-transform"
-              title="Explore / Radar (Active)"
+              title="Explore & Search (Active)"
             >
               🧭
             </button>
             <button 
               onClick={() => navigate('/connections')}
               className="w-9 h-9 rounded-full bg-black/35 hover:bg-black/55 text-white flex items-center justify-center text-sm font-bold shadow-xs cursor-pointer hover:scale-105 transition-transform"
-              title="Work / Network"
+              title="Matches & Connections"
             >
               💼
+            </button>
+            <button 
+              onClick={() => navigate('/notifications')}
+              className="w-9 h-9 rounded-full bg-black/35 hover:bg-black/55 text-white flex items-center justify-center text-sm font-bold shadow-xs cursor-pointer hover:scale-105 transition-transform relative"
+              title="Notifications"
+            >
+              🔔
+              {unreadNotifications > 0 && (
+                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
+                  {unreadNotifications}
+                </span>
+              )}
             </button>
             <button 
               onClick={() => navigate('/settings')}

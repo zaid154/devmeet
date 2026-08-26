@@ -13,7 +13,10 @@ const { buildDiscoveryQuery, normalizePreference } = require('../utils/matchingS
 // Optional auth helper (Allows guests or logged-in users to view public feeds)
 const optionalUserAuth = async (req, res, next) => {
     try {
-        const token = req?.cookies?.token;
+        let token = req?.cookies?.token;
+        if (!token && req.headers.authorization) {
+            token = req.headers.authorization.replace('Bearer ', '');
+        }
         if (token) {
             const jwt = require('jsonwebtoken');
             const secret = process.env.JWT_PVT_KEY || process.env.JWT_SECRET || 'dev_super_secret_change_me_0123456789abcdef';
@@ -58,7 +61,44 @@ router.get('/profile', userAuth, async (req, res) => {
 
 
 // =========================================================================
-// 2. UPDATE PROFILE API
+// 2. GET USER PROFILE BY ID
+// Kaam: Kisi doosre user ki detailed profile dekhne ke liye use hota hai.
+// Kab use hota hai: Swipe deck me card expand karne par ya matched profile open karne par.
+// =========================================================================
+router.get('/user/:id', optionalUserAuth, async (req, res) => {
+    try {
+        const { id } = req.params;
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            return res.status(400).send({
+                status: false,
+                message: "Invalid User ID"
+            });
+        }
+
+        const user = await userModel.findById(id).select('-password');
+        if (!user) {
+            return res.status(404).send({
+                status: false,
+                message: "User not found"
+            });
+        }
+
+        res.send({
+            status: true,
+            message: "User found successfully",
+            data: user
+        });
+    } catch (error) {
+        res.status(500).send({
+            status: false,
+            message: error.message
+        });
+    }
+});
+
+
+// =========================================================================
+// 3. UPDATE PROFILE API
 // Kaam: User ka bio, skills, location, interests, photos, aur goals update karta hai.
 // Kab use hota hai: Jab user 'Edit Profile' screen par details save karta hai.
 // =========================================================================
@@ -115,7 +155,7 @@ router.patch('/updateProfile', userAuth, async (req, res) => {
 
 
 // =========================================================================
-// 3. GET FEED RECOMMENDATIONS (Swipe Deck)
+// 4. GET FEED RECOMMENDATIONS (Swipe Deck)
 // Kaam: Strict sexual & romantic preference ke hisab se matching profiles return karta hai.
 // Kab use hota hai: Feed / Dating swipe screen par card stack load karne ke liye.
 // =========================================================================
@@ -142,16 +182,11 @@ router.get('/allUser', optionalUserAuth, async (req, res) => {
             message: error.message
         });
     }
-});d({
-            status: false,
-            message: error.message
-        });
-    }
 });
 
 
 // =========================================================================
-// 4. RESET FEED API
+// 5. RESET FEED API
 // Kaam: User ki 'ignored' / 'passed' connections clear karke feed dobara refresh karta hai.
 // Kab use hota hai: Jab feed me saare profiles khatam ho jayein aur user 'Start Over' click kare.
 // =========================================================================
@@ -291,6 +326,15 @@ router.delete('/account', userAuth, async (req, res) => {
             status: true,
             message: "Account deleted permanently"
         });
+    } catch (error) {
+        res.status(500).send({
+            status: false,
+            message: error.message
+        });
+    }
+});
+
+
 // =========================================================================
 // 9. GET USER SETTINGS (Preferences & Privacy)
 // =========================================================================
