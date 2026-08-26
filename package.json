@@ -1,4 +1,5 @@
 {
+<<<<<<< HEAD
   "name": "devmeetup",
   "version": "1.0.0",
   "description": "",
@@ -29,3 +30,33 @@
     "validator": "^13.15.35"
   }
 }
+=======
+  "name": "developer-meetups",
+  "version": "1.0.0",
+  "description": "Developer-Meetups MERN Fullstack Application",
+  "private": true,
+  "scripts": {
+    "postinstall": "npm run install:all",
+    "install:all": "npm install --prefix backend && npm install --prefix frontend",
+    "install:backend": "npm install --prefix backend",
+    "install:frontend": "npm install --prefix frontend",
+    "dev": "concurrently --kill-others-on-fail -n \"BACKEND,FRONTEND\" -c \"bgBlue.bold,bgMagenta.bold\" \"npm run dev --prefix backend\" \"npm run dev --prefix frontend\"",
+    "start": "concurrently --kill-others-on-fail -n \"BACKEND,FRONTEND\" -c \"bgBlue.bold,bgMagenta.bold\" \"npm run start --prefix backend\" \"npm run dev --prefix frontend\"",
+    "seed": "npm run seed --prefix backend",
+    "build": "npm run build --prefix frontend"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  },
+  "keywords": [
+    "mern",
+    "developer-meetups",
+    "react",
+    "nodejs",
+    "express",
+    "mongodb"
+  ],
+  "author": "Mohd Zaid",
+  "license": "ISC"
+}
+>>>>>>> ebe8d87 (feat: complete MERN developer-meetups app with full responsive UI/UX overhaul, strict authentication, admin dashboard, and socket chat)
