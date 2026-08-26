@@ -140,7 +140,7 @@ const userSchema = new Schema({
     },
     verificationStatus: {
         type: String,
-        enum: ["none", "pending", "approved", "rejected"],
+        enum: ["none", "unverified", "pending", "approved", "rejected"],
         default: "none"
     },
     lastSeen: {

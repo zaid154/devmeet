@@ -528,7 +528,7 @@ router.post('/onboarding', async (req, res) => {
                 relationshipGoal: relationshipGoal || 'long-term',
                 accountStatus: 'active',
                 isVerified: false,
-                verificationStatus: 'unverified'
+                verificationStatus: 'none'
             });
         }
 
