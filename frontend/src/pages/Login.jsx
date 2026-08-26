@@ -99,11 +99,7 @@ const Login = ({ initialMode }) => {
         type: 'email'
       });
 
-      if (res.data.hasPassword) {
-        // User already has a password-based account → go to password login
-        setError('Account already exists. Please login with your password.');
-        setStep('password-login');
-      } else if (res.data.status) {
+      if (res.data.status) {
         setResendCooldown(60);
         setStep('email-otp');
       } else {

@@ -263,19 +263,54 @@ router.post('/forgot-password', async (req, res) => {
 
             await sendEmail({
                 to: user.email,
-                subject: '🔒 Reset Your DevMeet Password',
-                text: `You requested to reset your password. Click here: ${resetUrl}`,
-                html: `
-                    <div style="font-family: Arial, sans-serif; max-width: 480px; margin: auto; padding: 24px; border: 1px solid #eee; border-radius: 16px;">
-                        <h2 style="color: #fe3c72; margin-bottom: 8px;">DevMeet Password Reset</h2>
-                        <p style="color: #444;">Hi ${user.firstName},</p>
-                        <p style="color: #444;">You requested to reset your password. Click the link below to set a new password:</p>
-                        <div style="text-align: center; margin: 24px 0;">
-                            <a href="${resetUrl}" style="background: #fe3c72; color: #fff; text-decoration: none; padding: 12px 24px; border-radius: 30px; font-weight: bold; display: inline-block;">Reset Password</a>
-                        </div>
-                        <p style="color: #888; font-size: 12px;">This link will expire in 1 hour.</p>
-                    </div>
-                `
+                subject: 'Reset your DevMeet password',
+                text: `Hi ${user.firstName}, you requested to reset your password. Click here: ${resetUrl}. This link expires in 1 hour.`,
+                html: `<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"></head>
+<body style="margin:0;padding:0;background-color:#f4f4f7;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+<table width="100%" cellpadding="0" cellspacing="0" style="background-color:#f4f4f7;padding:40px 20px;">
+<tr><td align="center">
+<table width="100%" cellpadding="0" cellspacing="0" style="max-width:460px;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.06);">
+
+<!-- Header -->
+<tr><td style="background:linear-gradient(135deg,#c8102e 0%,#ff4458 100%);padding:32px 24px;text-align:center;">
+<h1 style="margin:0;font-size:28px;font-weight:900;color:#ffffff;letter-spacing:-0.5px;">dev<span style="opacity:0.85;">meet</span></h1>
+<p style="margin:6px 0 0;font-size:12px;color:rgba(255,255,255,0.8);font-weight:500;letter-spacing:0.5px;">PASSWORD RESET</p>
+</td></tr>
+
+<!-- Body -->
+<tr><td style="padding:36px 32px 20px;">
+<p style="margin:0 0 6px;font-size:15px;color:#333;font-weight:600;">Hi ${user.firstName}! 👋</p>
+<p style="margin:0 0 28px;font-size:14px;color:#666;line-height:1.6;">We received a request to reset your DevMeet account password. Click the button below to set a new password.</p>
+
+<!-- Reset Button -->
+<div style="text-align:center;margin:0 0 28px;">
+<a href="${resetUrl}" style="display:inline-block;background:linear-gradient(135deg,#c8102e,#ff4458);color:#ffffff;text-decoration:none;padding:14px 36px;border-radius:30px;font-weight:700;font-size:14px;letter-spacing:0.3px;">Reset Password</a>
+</div>
+
+<div style="background:#f0f9ff;border-left:4px solid #3b82f6;border-radius:0 8px 8px 0;padding:12px 16px;margin:0 0 24px;">
+<p style="margin:0;font-size:12px;color:#1e40af;line-height:1.5;">🔗 If the button doesn't work, copy and paste this URL in your browser:<br><span style="word-break:break-all;color:#3b82f6;">${resetUrl}</span></p>
+</div>
+
+<div style="background:#fff8f0;border-left:4px solid #f59e0b;border-radius:0 8px 8px 0;padding:12px 16px;margin:0 0 24px;">
+<p style="margin:0;font-size:12px;color:#92400e;line-height:1.5;">⚠️ This link will expire in <strong>1 hour</strong>. If you didn't request this, please ignore this email — your password will remain unchanged.</p>
+</div>
+</td></tr>
+
+<!-- Footer -->
+<tr><td style="padding:20px 32px 28px;border-top:1px solid #f0f0f3;">
+<table width="100%" cellpadding="0" cellspacing="0"><tr>
+<td style="font-size:11px;color:#bbb;">© 2026 DevMeet</td>
+<td align="right" style="font-size:11px;color:#bbb;">Made with ❤️ in India</td>
+</tr></table>
+</td></tr>
+
+</table>
+</td></tr>
+</table>
+</body>
+</html>`
             });
         } catch (emailErr) {
             console.log("Email send warning:", emailErr.message);
@@ -358,18 +393,6 @@ router.post('/send-otp', async (req, res) => {
 
         const cleanIdentifier = identifier.toString().trim().toLowerCase();
 
-        // Check if user already has a password-based account
-        if (cleanIdentifier.includes('@')) {
-            const existingUser = await userModel.findOne({ email: cleanIdentifier });
-            if (existingUser && existingUser.password) {
-                return res.send({
-                    status: false,
-                    hasPassword: true,
-                    message: "Account already exists. Please login with your email and password."
-                });
-            }
-        }
-
         const otp = Math.floor(100000 + Math.random() * 900000).toString();
 
         otpCache.set(cleanIdentifier, {
@@ -385,31 +408,54 @@ router.post('/send-otp', async (req, res) => {
             try {
                 const result = await sendEmail({
                     to: cleanIdentifier,
-                    subject: `🔥 Your DevMeet Verification Code is ${otp}`,
-                    text: `Your DevMeet verification code is: ${otp}. It expires in 10 minutes.`,
-                    html: `
-                        <div style="font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 500px; margin: auto; padding: 32px 24px; border: 1px solid #f0f0f0; border-radius: 24px; background: #ffffff; color: #111418;">
-                            <div style="text-align: center; margin-bottom: 24px;">
-                                <h1 style="color: #111418; font-size: 28px; font-weight: 900; margin: 0; letter-spacing: -0.5px;">dev<span style="color: #c8102e;">meet</span></h1>
-                                <p style="color: #71717a; font-size: 13px; margin-top: 4px; font-weight: 600;">Dating & Networking for Developers</p>
-                            </div>
-                            
-                            <div style="background: #fafafa; border-radius: 18px; padding: 24px; text-align: center; border: 1px solid #f0f0f0; margin-bottom: 24px;">
-                                <p style="font-size: 14px; font-weight: 700; color: #52525b; margin: 0 0 12px 0; text-transform: uppercase; letter-spacing: 1px;">Your 6-Digit Passcode</p>
-                                <div style="font-size: 38px; font-weight: 900; letter-spacing: 8px; color: #c8102e; font-family: monospace;">${otp}</div>
-                                <p style="font-size: 12px; color: #a1a1aa; margin: 12px 0 0 0;">Valid for 10 minutes. Do not share this code with anyone.</p>
-                            </div>
+                    subject: `${otp} is your DevMeet verification code`,
+                    text: `Your DevMeet verification code is: ${otp}. It expires in 10 minutes. Do not share this code with anyone.`,
+                    html: `<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"></head>
+<body style="margin:0;padding:0;background-color:#f4f4f7;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+<table width="100%" cellpadding="0" cellspacing="0" style="background-color:#f4f4f7;padding:40px 20px;">
+<tr><td align="center">
+<table width="100%" cellpadding="0" cellspacing="0" style="max-width:460px;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.06);">
 
-                            <p style="font-size: 13px; color: #71717a; line-height: 1.6; margin: 0;">
-                                If you didn't request this code, you can safely ignore this email.
-                            </p>
+<!-- Header -->
+<tr><td style="background:linear-gradient(135deg,#c8102e 0%,#ff4458 100%);padding:32px 24px;text-align:center;">
+<h1 style="margin:0;font-size:28px;font-weight:900;color:#ffffff;letter-spacing:-0.5px;">dev<span style="opacity:0.85;">meet</span></h1>
+<p style="margin:6px 0 0;font-size:12px;color:rgba(255,255,255,0.8);font-weight:500;letter-spacing:0.5px;">VERIFICATION CODE</p>
+</td></tr>
 
-                            <hr style="border: none; border-top: 1px solid #f4f4f5; margin: 24px 0;" />
-                            <p style="font-size: 11px; color: #a1a1aa; text-align: center; margin: 0;">
-                                &copy; 2026 DevMeet Inc. All rights reserved.
-                            </p>
-                        </div>
-                    `
+<!-- Body -->
+<tr><td style="padding:36px 32px 20px;">
+<p style="margin:0 0 6px;font-size:15px;color:#333;font-weight:600;">Hi there! 👋</p>
+<p style="margin:0 0 28px;font-size:14px;color:#666;line-height:1.6;">Use the verification code below to complete your sign-in to DevMeet.</p>
+
+<!-- OTP Box -->
+<div style="background:#f8f9fb;border:2px dashed #e0e3e8;border-radius:14px;padding:24px;text-align:center;margin:0 0 28px;">
+<p style="margin:0 0 10px;font-size:11px;font-weight:700;color:#999;text-transform:uppercase;letter-spacing:2px;">Your 6-Digit Code</p>
+<div style="font-size:36px;font-weight:900;letter-spacing:10px;color:#c8102e;font-family:'Courier New',monospace;">${otp}</div>
+<p style="margin:12px 0 0;font-size:12px;color:#aaa;">Expires in 10 minutes</p>
+</div>
+
+<div style="background:#fff8f0;border-left:4px solid #f59e0b;border-radius:0 8px 8px 0;padding:12px 16px;margin:0 0 24px;">
+<p style="margin:0;font-size:12px;color:#92400e;line-height:1.5;">⚠️ <strong>Security tip:</strong> Never share this code with anyone. DevMeet will never ask for your code via call or message.</p>
+</div>
+
+<p style="margin:0;font-size:13px;color:#999;line-height:1.5;">If you didn't request this code, you can safely ignore this email. Someone may have entered your email by mistake.</p>
+</td></tr>
+
+<!-- Footer -->
+<tr><td style="padding:20px 32px 28px;border-top:1px solid #f0f0f3;">
+<table width="100%" cellpadding="0" cellspacing="0"><tr>
+<td style="font-size:11px;color:#bbb;">© 2026 DevMeet</td>
+<td align="right" style="font-size:11px;color:#bbb;">Made with ❤️ in India</td>
+</tr></table>
+</td></tr>
+
+</table>
+</td></tr>
+</table>
+</body>
+</html>`
                 });
                 emailSent = result && result.success;
                 if (emailSent) {
