@@ -63,80 +63,13 @@ const EXPLORE_CATEGORIES = [
   }
 ];
 
-const EXPLORE_SEED_PROFILES = [
-  {
-    _id: 'user-manisha',
-    firstName: 'Manisha',
-    age: 22,
-    location: '35 kilometers away',
-    city: 'Lives in Gurugram',
-    bio: 'Sunset gazer, aesthetic playlists & late night deep conversations 🌅',
-    category: 'long-term',
-    photos: [
-      'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=800&q=80'
-    ],
-    skills: ['UI/UX', 'Figma', 'Creative Writing'],
-    interests: ['Sunsets', 'Indie Music', 'Cafes', 'Photography'],
-    isVerified: false
-  },
-  {
-    _id: 'user-tanya',
-    firstName: 'Tanya',
-    age: 24,
-    location: '18 kilometers away',
-    city: 'Lives in New Delhi',
-    bio: 'Looking for spontaneous coffee dates & indie music recommendations ☕✨',
-    category: 'short-term',
-    photos: [
-      'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=800&q=80'
-    ],
-    skills: ['Product', 'Strategy', 'React'],
-    interests: ['Coffee', 'Travel', 'Art', 'Podcasts'],
-    isVerified: true
-  },
-  {
-    _id: 'user-rohan',
-    firstName: 'Rohan',
-    age: 25,
-    location: '22 kilometers away',
-    city: 'Lives in Noida',
-    bio: 'Co-op gamer, full-stack dev & open-source contributor 🎮🚀',
-    category: 'gamers',
-    photos: [
-      'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=800&q=80'
-    ],
-    skills: ['Python', 'TypeScript', 'Node.js'],
-    interests: ['Valorant', 'Anime', 'Sci-Fi', 'Bouldering'],
-    isVerified: true
-  },
-  {
-    _id: 'user-ananya',
-    firstName: 'Ananya',
-    age: 23,
-    location: '12 kilometers away',
-    city: 'Lives in South Delhi',
-    bio: 'Design nerd, matcha lover & looking for new friends to explore city art galleries 🎨',
-    category: 'friends',
-    photos: [
-      'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=800&q=80'
-    ],
-    skills: ['Design Systems', 'Illustrator', 'React'],
-    interests: ['Art', 'Museums', 'Matcha', 'Books'],
-    isVerified: true
-  }
-];
-
 const Explore = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
 
   const [selectedCategory, setSelectedCategory] = useState('long-term');
-  const [users, setUsers] = useState(EXPLORE_SEED_PROFILES);
+  const [users, setUsers] = useState([]);
+  const [loading, setLoading] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
   const [isProfileExpanded, setIsProfileExpanded] = useState(false);
@@ -146,6 +79,33 @@ const Explore = () => {
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
   const [animatingSwipe, setAnimatingSwipe] = useState(null);
+
+  const fetchCategoryUsers = async (category) => {
+    setLoading(true);
+    try {
+      const res = await axios.get(`${BASE_URL}/allUser?category=${category}&limit=30`, {
+        withCredentials: true
+      });
+      if (res.data.status && Array.isArray(res.data.data)) {
+        setUsers(res.data.data);
+      } else {
+        setUsers([]);
+      }
+      setCurrentIndex(0);
+      setCurrentPhotoIndex(0);
+    } catch (err) {
+      console.error('Explore fetch error:', err);
+      setUsers([]);
+      setCurrentIndex(0);
+      setCurrentPhotoIndex(0);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchCategoryUsers(selectedCategory);
+  }, [selectedCategory]);
 
   // Keyboard shortcut listener
   useEffect(() => {
@@ -167,10 +127,6 @@ const Explore = () => {
   // Handle category tile click
   const handleSelectCategory = (catId) => {
     setSelectedCategory(catId);
-    const filtered = EXPLORE_SEED_PROFILES.filter(p => !p.category || p.category === catId);
-    setUsers(filtered.length > 0 ? filtered : EXPLORE_SEED_PROFILES);
-    setCurrentIndex(0);
-    setCurrentPhotoIndex(0);
   };
 
   // Ultra-Smooth 60FPS Optimistic Swipe
@@ -661,14 +617,24 @@ const Explore = () => {
           </div>
         ) : (
           <div className="text-center p-8 bg-white rounded-3xl shadow-xl max-w-sm">
-            <h3 className="text-xl font-black text-gray-900 mb-2">That's everyone in this category!</h3>
-            <p className="text-xs text-gray-500 mb-6">Explore other goals or reset your feed.</p>
-            <button
-              onClick={() => handleSelectCategory('long-term')}
-              className="bg-[#fe3c72] text-white font-bold py-3 px-6 rounded-full text-xs shadow-md hover:scale-105 transition-transform cursor-pointer"
-            >
-              Reset Category
-            </button>
+            <h3 className="text-xl font-black text-gray-900 mb-2">No matching profiles found</h3>
+            <p className="text-xs text-gray-500 mb-6 leading-relaxed">
+              We couldn't find any active profiles in this category matching your sexual/dating interest. Try other categories or update your discovery preferences.
+            </p>
+            <div className="flex flex-col gap-2">
+              <button
+                onClick={() => handleSelectCategory('long-term')}
+                className="bg-black hover:bg-gray-900 text-white font-bold py-3 px-6 rounded-full text-xs shadow-md hover:scale-105 transition-transform cursor-pointer"
+              >
+                Explore All Goals
+              </button>
+              <button
+                onClick={() => navigate('/settings')}
+                className="bg-gray-100 hover:bg-gray-200 text-gray-800 font-bold py-3 px-6 rounded-full text-xs transition-transform cursor-pointer"
+              >
+                Dating Preferences
+              </button>
+            </div>
           </div>
         )}
 

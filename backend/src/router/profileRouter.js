@@ -8,6 +8,7 @@ const blockModel = require('../modal/block');
 const messageModel = require('../modal/message');
 const reportModel = require('../modal/report');
 const userAuth = require('../utils/userAuth');
+const { buildDiscoveryQuery, normalizePreference } = require('../utils/matchingService');
 
 // Optional auth helper (Allows guests or logged-in users to view public feeds)
 const optionalUserAuth = async (req, res, next) => {
@@ -66,9 +67,9 @@ router.patch('/updateProfile', userAuth, async (req, res) => {
         const userId = req.userId;
         const allowedFields = [
             "firstName", "lastName", "age", "skills", "profileImage", "phone",
-            "bio", "interests", "relationshipGoal", "lookingFor", "location",
+            "bio", "interests", "relationshipGoal", "interestedIn", "lookingFor", "location",
             "education", "job", "height", "zodiacSign", "favoriteArtist",
-            "favoriteSong", "musicGenre", "gender", "photos"
+            "favoriteSong", "musicGenre", "gender", "photos", "preferences"
         ];
 
         const updateData = {};
@@ -77,6 +78,14 @@ router.patch('/updateProfile', userAuth, async (req, res) => {
                 updateData[key] = req.body[key];
             }
         });
+
+        // Keep interestedIn and preferences.gender synchronized
+        if (updateData.interestedIn) {
+            updateData.lookingFor = updateData.interestedIn;
+            if (!updateData['preferences.gender']) {
+                updateData['preferences.gender'] = updateData.interestedIn;
+            }
+        }
 
         const updatedUser = await userModel.findByIdAndUpdate(
             userId,
@@ -107,49 +116,20 @@ router.patch('/updateProfile', userAuth, async (req, res) => {
 
 // =========================================================================
 // 3. GET FEED RECOMMENDATIONS (Swipe Deck)
-// Kaam: User ko swipe karne ke liye naye matching profiles return karta hai.
+// Kaam: Strict sexual & romantic preference ke hisab se matching profiles return karta hai.
 // Kab use hota hai: Feed / Dating swipe screen par card stack load karne ke liye.
 // =========================================================================
 router.get('/allUser', optionalUserAuth, async (req, res) => {
     try {
-        const currentUserId = req.userId;
+        const currentUser = req.user;
+        const limit = Number(req.query.limit) || 50;
 
-        let excludedUserIds = [];
+        // Build exact preference-based matching query
+        const discoveryFilter = await buildDiscoveryQuery(currentUser, req.query);
 
-        if (currentUserId) {
-            excludedUserIds.push(currentUserId);
-
-            // Hide already interacted profiles (passed, liked, accepted)
-            const existingConnections = await connectionModel.find({
-                $or: [{ fromUserId: currentUserId }, { toUserId: currentUserId }]
-            });
-
-            existingConnections.forEach(conn => {
-                if (conn.fromUserId.toString() === currentUserId.toString()) {
-                    excludedUserIds.push(conn.toUserId);
-                } else {
-                    excludedUserIds.push(conn.fromUserId);
-                }
-            });
-
-            // Hide blocked users
-            const blocks = await blockModel.find({
-                $or: [{ blockerId: currentUserId }, { blockedId: currentUserId }]
-            });
-
-            blocks.forEach(b => {
-                excludedUserIds.push(b.blockerId);
-                excludedUserIds.push(b.blockedId);
-            });
-        }
-
-        const feedUsers = await userModel.find({
-            _id: { $nin: excludedUserIds },
-            role: 'user',
-            accountStatus: 'active'
-        })
-        .select('-password')
-        .limit(20);
+        const feedUsers = await userModel.find(discoveryFilter)
+            .select('-password')
+            .limit(limit);
 
         res.send({
             status: true,
@@ -158,6 +138,11 @@ router.get('/allUser', optionalUserAuth, async (req, res) => {
         });
     } catch (error) {
         res.status(500).send({
+            status: false,
+            message: error.message
+        });
+    }
+});d({
             status: false,
             message: error.message
         });
@@ -195,53 +180,17 @@ router.post('/resetFeed', userAuth, async (req, res) => {
 
 // =========================================================================
 // 5. SEARCH USERS API (Explore & Search)
-// Kaam: Keywords (Name, Skills, Job, Location) ke hisab se profiles filter karta hai.
+// Kaam: Keywords (Name, Skills, Job, Location) & Sexual Interest ke hisab se profiles filter karta hai.
 // Kab use hota hai: Search page ya Explore filter bar me.
 // =========================================================================
-router.get('/searchUsers', userAuth, async (req, res) => {
+router.get('/searchUsers', optionalUserAuth, async (req, res) => {
     try {
-        const { query = '', gender = '', minAge, maxAge, skills = '', location = '' } = req.query;
-        const currentUserId = req.userId;
+        const currentUser = req.user;
+        const filter = await buildDiscoveryQuery(currentUser, req.query);
 
-        const filter = {
-            _id: { $ne: currentUserId },
-            role: 'user',
-            accountStatus: 'active'
-        };
-
-        if (query.trim()) {
-            const regex = new RegExp(query.trim(), 'i');
-            filter.$or = [
-                { firstName: regex },
-                { lastName: regex },
-                { job: regex },
-                { location: regex },
-                { bio: regex }
-            ];
-        }
-
-        if (gender && gender !== 'all') {
-            filter.gender = gender;
-        }
-
-        if (minAge || maxAge) {
-            filter.age = {};
-            if (minAge) filter.age.$gte = Number(minAge);
-            if (maxAge) filter.age.$lte = Number(maxAge);
-        }
-
-        if (location) {
-            filter.location = new RegExp(location, 'i');
-        }
-
-        if (skills) {
-            const skillList = skills.split(',').map(s => s.trim()).filter(Boolean);
-            if (skillList.length > 0) {
-                filter.skills = { $in: skillList };
-            }
-        }
-
-        const results = await userModel.find(filter).select('-password').limit(30);
+        const results = await userModel.find(filter)
+            .select('-password')
+            .limit(50);
 
         res.send({
             status: true,
@@ -341,6 +290,82 @@ router.delete('/account', userAuth, async (req, res) => {
         res.send({
             status: true,
             message: "Account deleted permanently"
+        });
+// =========================================================================
+// 9. GET USER SETTINGS (Preferences & Privacy)
+// =========================================================================
+router.get('/settings', userAuth, async (req, res) => {
+    try {
+        const user = await userModel.findById(req.userId).select('preferences privacy interestedIn lookingFor gender');
+        if (!user) {
+            return res.status(404).send({
+                status: false,
+                message: "User not found"
+            });
+        }
+
+        res.send({
+            status: true,
+            data: {
+                preferences: {
+                    ageMin: user.preferences?.ageMin || 18,
+                    ageMax: user.preferences?.ageMax || 45,
+                    gender: user.interestedIn || user.preferences?.gender || 'everyone',
+                    location: user.preferences?.location || ''
+                },
+                privacy: user.privacy || {
+                    showOnlineStatus: true,
+                    showLastSeen: true,
+                    showProfile: true
+                },
+                interestedIn: user.interestedIn || 'everyone',
+                gender: user.gender
+            }
+        });
+    } catch (error) {
+        res.status(500).send({
+            status: false,
+            message: error.message
+        });
+    }
+});
+
+
+// =========================================================================
+// 10. UPDATE USER SETTINGS (Preferences & Privacy)
+// =========================================================================
+router.patch('/settings', userAuth, async (req, res) => {
+    try {
+        const { preferences, privacy } = req.body || {};
+        const updateData = {};
+
+        if (preferences) {
+            if (preferences.ageMin !== undefined) updateData['preferences.ageMin'] = Number(preferences.ageMin);
+            if (preferences.ageMax !== undefined) updateData['preferences.ageMax'] = Number(preferences.ageMax);
+            if (preferences.location !== undefined) updateData['preferences.location'] = preferences.location;
+            if (preferences.gender) {
+                updateData['preferences.gender'] = preferences.gender;
+                updateData.interestedIn = preferences.gender;
+                updateData.lookingFor = preferences.gender;
+            }
+        }
+
+        if (privacy) {
+            if (privacy.showOnlineStatus !== undefined) updateData['privacy.showOnlineStatus'] = Boolean(privacy.showOnlineStatus);
+            if (privacy.showLastSeen !== undefined) updateData['privacy.showLastSeen'] = Boolean(privacy.showLastSeen);
+            if (privacy.showProfile !== undefined) updateData['privacy.showProfile'] = Boolean(privacy.showProfile);
+        }
+
+        const updatedUser = await userModel.findByIdAndUpdate(
+            req.userId,
+            { $set: updateData },
+            { new: true, runValidators: true }
+        ).select('-password');
+
+        res.send({
+            status: true,
+            message: "Preferences updated successfully! 🎉",
+            data: updatedUser
         });
     } catch (error) {
         res.status(500).send({

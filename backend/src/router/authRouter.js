@@ -161,7 +161,7 @@ router.post('/user', async (req, res) => {
     try {
         validateUser(req);
 
-        const { firstName, lastName, email, password, gender, age, profileImage, phone, job, location, bio, skills, interests } = req.body;
+        const { firstName, lastName, email, password, gender, interestedIn, lookingFor, age, profileImage, phone, job, location, bio, skills, interests } = req.body;
 
         const existingEmail = await userModel.findOne({ email: email.toLowerCase().trim() });
         if (existingEmail) {
@@ -174,13 +174,22 @@ router.post('/user', async (req, res) => {
         const saltRounds = Number(process.env.SALT_ROUND) || 10;
         const hashedPassword = await bcrypt.hash(password, saltRounds);
 
+        const targetInterest = interestedIn || lookingFor || 'everyone';
+
         const newUser = new userModel({
             firstName,
             lastName,
             email: email.toLowerCase().trim(),
             password: hashedPassword,
             age,
-            gender,
+            gender: gender || 'male',
+            interestedIn: targetInterest,
+            lookingFor: targetInterest,
+            preferences: {
+                gender: targetInterest,
+                ageMin: 18,
+                ageMax: 50
+            },
             phone: phone || '',
             job: job || '',
             location: location || '',
@@ -564,6 +573,8 @@ router.post('/onboarding', async (req, res) => {
             email,
             password,
             gender,
+            interestedIn,
+            lookingFor,
             age,
             phone,
             job,
@@ -585,12 +596,19 @@ router.post('/onboarding', async (req, res) => {
 
         const allPhotos = Array.isArray(photos) && photos.length ? photos : profileImage ? [profileImage] : [];
         const mainImage = profileImage || allPhotos[0] || '';
+        const targetInterest = interestedIn || lookingFor || 'everyone';
 
         let targetUser = await userModel.findOne({ email: email.toLowerCase().trim() });
         if (targetUser) {
             targetUser.firstName = firstName.trim();
             if (lastName) targetUser.lastName = lastName.trim();
             if (gender) targetUser.gender = gender;
+            if (targetInterest) {
+                targetUser.interestedIn = targetInterest;
+                targetUser.lookingFor = targetInterest;
+                if (!targetUser.preferences) targetUser.preferences = {};
+                targetUser.preferences.gender = targetInterest;
+            }
             if (age) targetUser.age = Number(age);
             if (phone) targetUser.phone = phone.trim();
             if (allPhotos.length) targetUser.photos = allPhotos;
@@ -609,6 +627,13 @@ router.post('/onboarding', async (req, res) => {
                 email: email.toLowerCase().trim(),
                 password: hashedPassword,
                 gender: gender || 'male',
+                interestedIn: targetInterest,
+                lookingFor: targetInterest,
+                preferences: {
+                    gender: targetInterest,
+                    ageMin: 18,
+                    ageMax: 50
+                },
                 age: Number(age) || 24,
                 phone: phone ? phone.trim() : '',
                 job: job || 'Software Engineer',

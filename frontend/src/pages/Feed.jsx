@@ -71,73 +71,6 @@ const Feed = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [currentIndex, users, matchedUser, isProfileExpanded]);
 
-  const DEFAULT_SEED_PROFILES = [
-    {
-      _id: 'user-virat',
-      firstName: 'Virat',
-      age: 35,
-      location: '5 kilometers away',
-      city: 'Mumbai, India',
-      bio: 'Passionate about high performance on the pitch, intense gym sessions, and plant-based healthy living. 🏏💪⚡',
-      photos: [
-        '/profiles/virat_kohli_1.jpg',
-        '/profiles/virat_kohli_2.jpg'
-      ],
-      skills: ['Cover Drive', 'Athletic Training'],
-      interests: ['Cricket', 'Fitness', 'Nutrition', 'Travel'],
-      job: 'Cricketer',
-      isVerified: true
-    },
-    {
-      _id: 'user-anushka',
-      firstName: 'Anushka',
-      age: 36,
-      location: '5 kilometers away',
-      city: 'Mumbai, India',
-      bio: 'Producing meaningful cinema, practicing daily yoga, and finding peace in quiet mountain retreats. 🎬🧘‍♀️🐾',
-      photos: [
-        '/profiles/anushka_sharma_1.jpg',
-        '/profiles/anushka_sharma_2.jpg'
-      ],
-      skills: ['Acting', 'Film Production'],
-      interests: ['Cinema', 'Animal Welfare', 'Yoga'],
-      job: 'Actress, Producer',
-      isVerified: true
-    },
-    {
-      _id: 'user-rohit',
-      firstName: 'Rohit',
-      age: 37,
-      location: '8 kilometers away',
-      city: 'Mumbai, India',
-      bio: 'Leading from the front with effortless timing. Big on Mumbai street food and protecting marine life. 🏏🌊🍔',
-      photos: [
-        '/profiles/rohit_sharma_1.jpg',
-        '/profiles/rohit_sharma_2.jpg'
-      ],
-      skills: ['Pull Shot', 'Captaincy'],
-      interests: ['Cricket', 'Food', 'Gaming'],
-      job: 'Cricketer',
-      isVerified: true
-    },
-    {
-      _id: 'user-deepika',
-      firstName: 'Deepika',
-      age: 38,
-      location: '10 kilometers away',
-      city: 'Bangalore, India',
-      bio: 'Advocating for mental health awareness, building holistic self-care brands, and loving a good rally on the court. 🏸✨🌿',
-      photos: [
-        '/profiles/deepika_padukone_1.jpg',
-        '/profiles/deepika_padukone_2.jpg'
-      ],
-      skills: ['Acting', 'Brand Inception'],
-      interests: ['Mental Health', 'Badminton', 'Fashion'],
-      job: 'Actress, Entrepreneur',
-      isVerified: true
-    }
-  ];
-
   const fetchFeed = async () => {
     setLoading(true);
     setError('');
@@ -147,15 +80,16 @@ const Feed = () => {
         withCredentials: true,
       });
 
-      if (res.data.status && res.data.data?.length > 0) {
+      if (res.data.status && Array.isArray(res.data.data)) {
         setUsers(res.data.data);
       } else {
-        setUsers(DEFAULT_SEED_PROFILES);
+        setUsers([]);
       }
       setCurrentIndex(0);
       setCurrentPhotoIndex(0);
     } catch (err) {
-      setUsers(DEFAULT_SEED_PROFILES);
+      console.error('Fetch feed error:', err);
+      setUsers([]);
       setCurrentIndex(0);
       setCurrentPhotoIndex(0);
     } finally {
@@ -562,16 +496,28 @@ const Feed = () => {
             <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-gradient-to-tr from-pink-100 to-red-50 mx-auto flex items-center justify-center">
               <FlameIcon className="w-8 h-8 sm:w-10 sm:h-10 text-[#fe3c72]" />
             </div>
-            <h2 className="text-xl sm:text-2xl font-black text-gray-900">That's everyone for now!</h2>
-            <p className="text-xs text-gray-500 leading-relaxed">
-              Check back soon for new profiles in your area, or reset your feed to swipe again.
+            <h2 className="text-xl sm:text-2xl font-black text-gray-900">
+              {users.length === 0 ? 'No matching profiles found' : "That's everyone for now!"}
+            </h2>
+            <p className="text-xs text-gray-500 leading-relaxed max-w-xs mx-auto">
+              {users.length === 0 
+                ? 'We could not find any active profiles matching your selected gender and dating preferences.' 
+                : 'You have seen all available profiles matching your preferences. Check back later or reset your feed.'}
             </p>
-            <button
-              onClick={handleResetFeed}
-              className="bg-black hover:bg-gray-900 text-white font-bold px-8 py-3 rounded-full text-xs uppercase tracking-wider shadow-md cursor-pointer hover:scale-105 transition-all"
-            >
-              Reset Swiping Feed
-            </button>
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-2.5 pt-2">
+              <button
+                onClick={handleResetFeed}
+                className="w-full sm:w-auto bg-black hover:bg-gray-900 text-white font-bold px-6 py-3 rounded-full text-xs uppercase tracking-wider shadow-md cursor-pointer hover:scale-105 transition-all"
+              >
+                Reset Feed
+              </button>
+              <Link
+                to="/settings"
+                className="w-full sm:w-auto bg-gray-100 hover:bg-gray-200 text-gray-800 font-bold px-6 py-3 rounded-full text-xs uppercase tracking-wider transition-all text-center"
+              >
+                Edit Preferences
+              </Link>
+            </div>
           </div>
         ) : (
           <div className="flex flex-col items-center justify-center space-y-2 sm:space-y-3 max-h-full my-auto">

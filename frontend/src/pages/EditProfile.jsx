@@ -21,6 +21,7 @@ const EditProfile = () => {
   const [lastName, setLastName] = useState('');
   const [age, setAge] = useState(24);
   const [gender, setGender] = useState('male');
+  const [interestedIn, setInterestedIn] = useState('everyone');
   const [bio, setBio] = useState('');
   const [location, setLocation] = useState('');
   const [education, setEducation] = useState('');
@@ -46,6 +47,7 @@ const EditProfile = () => {
       setLastName(user.lastName || '');
       setAge(user.age || 24);
       setGender(user.gender || 'male');
+      setInterestedIn(user.interestedIn || user.preferences?.gender || 'everyone');
       setBio(user.bio || '');
       setLocation(user.location || '');
       setEducation(user.education || '');
@@ -157,6 +159,8 @@ const EditProfile = () => {
         lastName,
         age: Number(age),
         gender,
+        interestedIn,
+        lookingFor: interestedIn,
         bio,
         location,
         education,
@@ -376,6 +380,35 @@ const EditProfile = () => {
                   <option value="short-term">Short-term fun</option>
                   <option value="new-friends">New coding friends</option>
                   <option value="figuring-out">Still figuring it out</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Gender and Interested In Dating Preference */}
+            <div className="grid grid-cols-2 gap-3 p-3.5 bg-rose-50/40 rounded-2xl border border-rose-100">
+              <div>
+                <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">My Gender</label>
+                <select
+                  value={gender}
+                  onChange={(e) => setGender(e.target.value)}
+                  className="w-full bg-white border border-gray-200 rounded-xl px-3 py-2 text-xs outline-none focus:border-[#fe3c72] font-semibold"
+                >
+                  <option value="male">Man / Male</option>
+                  <option value="female">Woman / Female</option>
+                  <option value="other">Non-binary / Other</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Interested In (Show Me)</label>
+                <select
+                  value={interestedIn}
+                  onChange={(e) => setInterestedIn(e.target.value)}
+                  className="w-full bg-white border border-gray-200 rounded-xl px-3 py-2 text-xs outline-none focus:border-[#fe3c72] font-semibold text-[#c8102e]"
+                >
+                  <option value="female">Women</option>
+                  <option value="male">Men</option>
+                  <option value="everyone">Everyone (Men & Women)</option>
                 </select>
               </div>
             </div>

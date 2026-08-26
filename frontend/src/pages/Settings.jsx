@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { BASE_URL } from '../utils/constants';
 
 const Settings = () => {
-  const { user, logout } = useAuth();
+  const { user, logout, updateUser } = useAuth();
   const [activeTab, setActiveTab] = useState('preferences');
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState({ type: '', text: '' });
@@ -77,7 +77,10 @@ const Settings = () => {
       }, { withCredentials: true });
 
       if (res.data.status) {
-        setMsg({ type: 'success', text: 'Settings updated successfully!' });
+        if (res.data.data) {
+          updateUser(res.data.data);
+        }
+        setMsg({ type: 'success', text: 'Dating preferences updated successfully! 🎉' });
       } else {
         setMsg({ type: 'error', text: 'Failed to update settings' });
       }

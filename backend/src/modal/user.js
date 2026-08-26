@@ -89,10 +89,15 @@ const userSchema = new Schema({
         enum: ["long-term", "long-term-open", "short-term", "short-term-open", "new-friends", "figuring-out", ""],
         default: ""
     },
+    interestedIn: {
+        type: String,
+        enum: ["male", "female", "everyone", "men", "women", "both", "all", "other", ""],
+        default: "everyone"
+    },
     lookingFor: {
         type: String,
-        enum: ["male", "female", "everyone", ""],
-        default: ""
+        enum: ["male", "female", "everyone", "men", "women", "both", "all", "other", ""],
+        default: "everyone"
     },
     location: {
         type: String,
@@ -155,7 +160,7 @@ const userSchema = new Schema({
     preferences: {
         ageMin: { type: Number, default: 18, min: 18, max: 60 },
         ageMax: { type: Number, default: 45, min: 18, max: 60 },
-        gender: { type: String, enum: ["male", "female", "everyone", ""], default: "everyone" },
+        gender: { type: String, enum: ["male", "female", "everyone", "men", "women", "both", "all", "other", ""], default: "everyone" },
         maxDistance: { type: Number, default: 100 },
         location: { type: String, default: '' }
     },
