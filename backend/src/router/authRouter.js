@@ -357,6 +357,19 @@ router.post('/send-otp', async (req, res) => {
         }
 
         const cleanIdentifier = identifier.toString().trim().toLowerCase();
+
+        // Check if user already has a password-based account
+        if (cleanIdentifier.includes('@')) {
+            const existingUser = await userModel.findOne({ email: cleanIdentifier });
+            if (existingUser && existingUser.password) {
+                return res.send({
+                    status: false,
+                    hasPassword: true,
+                    message: "Account already exists. Please login with your email and password."
+                });
+            }
+        }
+
         const otp = Math.floor(100000 + Math.random() * 900000).toString();
 
         otpCache.set(cleanIdentifier, {
@@ -367,43 +380,58 @@ router.post('/send-otp', async (req, res) => {
         console.log(`[AUTH OTP] Verification OTP for ${cleanIdentifier}: ${otp}`);
 
         // Send real email via Nodemailer
+        let emailSent = false;
         if (cleanIdentifier.includes('@')) {
-            await sendEmail({
-                to: cleanIdentifier,
-                subject: `🔥 Your DevMeet Verification Code is ${otp}`,
-                text: `Your DevMeet verification code is: ${otp}. It expires in 10 minutes.`,
-                html: `
-                    <div style="font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 500px; margin: auto; padding: 32px 24px; border: 1px solid #f0f0f0; border-radius: 24px; background: #ffffff; color: #111418;">
-                        <div style="text-align: center; margin-bottom: 24px;">
-                            <h1 style="color: #111418; font-size: 28px; font-weight: 900; margin: 0; letter-spacing: -0.5px;">dev<span style="color: #c8102e;">meet</span></h1>
-                            <p style="color: #71717a; font-size: 13px; margin-top: 4px; font-weight: 600;">Dating & Networking for Developers</p>
-                        </div>
-                        
-                        <div style="background: #fafafa; border-radius: 18px; padding: 24px; text-align: center; border: 1px solid #f0f0f0; margin-bottom: 24px;">
-                            <p style="font-size: 14px; font-weight: 700; color: #52525b; margin: 0 0 12px 0; text-transform: uppercase; letter-spacing: 1px;">Your 6-Digit Passcode</p>
-                            <div style="font-size: 38px; font-weight: 900; letter-spacing: 8px; color: #c8102e; font-family: monospace;">${otp}</div>
-                            <p style="font-size: 12px; color: #a1a1aa; margin: 12px 0 0 0;">Valid for 10 minutes. Do not share this code with anyone.</p>
-                        </div>
+            try {
+                const result = await sendEmail({
+                    to: cleanIdentifier,
+                    subject: `🔥 Your DevMeet Verification Code is ${otp}`,
+                    text: `Your DevMeet verification code is: ${otp}. It expires in 10 minutes.`,
+                    html: `
+                        <div style="font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 500px; margin: auto; padding: 32px 24px; border: 1px solid #f0f0f0; border-radius: 24px; background: #ffffff; color: #111418;">
+                            <div style="text-align: center; margin-bottom: 24px;">
+                                <h1 style="color: #111418; font-size: 28px; font-weight: 900; margin: 0; letter-spacing: -0.5px;">dev<span style="color: #c8102e;">meet</span></h1>
+                                <p style="color: #71717a; font-size: 13px; margin-top: 4px; font-weight: 600;">Dating & Networking for Developers</p>
+                            </div>
+                            
+                            <div style="background: #fafafa; border-radius: 18px; padding: 24px; text-align: center; border: 1px solid #f0f0f0; margin-bottom: 24px;">
+                                <p style="font-size: 14px; font-weight: 700; color: #52525b; margin: 0 0 12px 0; text-transform: uppercase; letter-spacing: 1px;">Your 6-Digit Passcode</p>
+                                <div style="font-size: 38px; font-weight: 900; letter-spacing: 8px; color: #c8102e; font-family: monospace;">${otp}</div>
+                                <p style="font-size: 12px; color: #a1a1aa; margin: 12px 0 0 0;">Valid for 10 minutes. Do not share this code with anyone.</p>
+                            </div>
 
-                        <p style="font-size: 13px; color: #71717a; line-height: 1.6; margin: 0;">
-                            If you didn't request this code, you can safely ignore this email.
-                        </p>
+                            <p style="font-size: 13px; color: #71717a; line-height: 1.6; margin: 0;">
+                                If you didn't request this code, you can safely ignore this email.
+                            </p>
 
-                        <hr style="border: none; border-top: 1px solid #f4f4f5; margin: 24px 0;" />
-                        <p style="font-size: 11px; color: #a1a1aa; text-align: center; margin: 0;">
-                            &copy; 2026 DevMeet Inc. All rights reserved.
-                        </p>
-                    </div>
-                `
-            });
+                            <hr style="border: none; border-top: 1px solid #f4f4f5; margin: 24px 0;" />
+                            <p style="font-size: 11px; color: #a1a1aa; text-align: center; margin: 0;">
+                                &copy; 2026 DevMeet Inc. All rights reserved.
+                            </p>
+                        </div>
+                    `
+                });
+                emailSent = result && result.success;
+                if (emailSent) {
+                    console.log(`[AUTH OTP] Email successfully sent to ${cleanIdentifier}`);
+                } else {
+                    console.error(`[AUTH OTP] Email send returned failure for ${cleanIdentifier}`);
+                }
+            } catch (mailErr) {
+                console.error(`[AUTH OTP] Nodemailer send error:`, mailErr.message);
+            }
         }
 
         res.send({
             status: true,
-            message: `Verification passcode sent to ${cleanIdentifier}`,
+            emailSent: emailSent,
+            message: emailSent
+                ? `Verification passcode sent to ${cleanIdentifier}`
+                : `OTP generated for ${cleanIdentifier}. Check your email (may take a moment).`,
             expiresInSeconds: 600
         });
     } catch (error) {
+        console.error('[AUTH OTP] Route error:', error.message);
         res.status(500).send({
             status: false,
             message: error.message
@@ -431,7 +459,7 @@ router.post('/verify-otp', async (req, res) => {
         const cleanOtp = otp.toString().trim();
 
         const cached = otpCache.get(cleanIdentifier);
-        const isValidOtp = (cached && cached.otp === cleanOtp && cached.expiresAt > Date.now()) || cleanOtp === '123456' || cleanOtp === '609455';
+        const isValidOtp = (cached && cached.otp === cleanOtp && cached.expiresAt > Date.now());
 
         if (!isValidOtp) {
             return res.status(400).send({

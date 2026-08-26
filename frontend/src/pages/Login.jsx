@@ -99,16 +99,18 @@ const Login = ({ initialMode }) => {
         type: 'email'
       });
 
-      if (res.data.status) {
+      if (res.data.hasPassword) {
+        // User already has a password-based account → go to password login
+        setError('Account already exists. Please login with your password.');
+        setStep('password-login');
+      } else if (res.data.status) {
         setResendCooldown(60);
         setStep('email-otp');
       } else {
         setError(res.data.message || 'Failed to send verification code');
       }
     } catch (err) {
-      console.warn("Backend send-otp warning:", err?.message);
-      setResendCooldown(60);
-      setStep('email-otp');
+      setError(err.response?.data?.message || 'Failed to connect to server. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -145,11 +147,7 @@ const Login = ({ initialMode }) => {
         setError(res.data.message || 'Invalid passcode');
       }
     } catch (err) {
-      if (enteredCode === '123456') {
-        setStep('house-rules');
-      } else {
-        setError(err.response?.data?.message || 'Invalid or expired passcode. Please check your email.');
-      }
+      setError(err.response?.data?.message || 'Invalid or expired passcode. Please check your email.');
     } finally {
       setLoading(false);
     }
@@ -760,6 +758,16 @@ const Login = ({ initialMode }) => {
             >
               {loading ? 'Logging in...' : 'Log In'}
             </button>
+
+            <div className="text-center pt-1">
+              <button
+                type="button"
+                onClick={() => navigate('/forgot-password')}
+                className="text-xs text-[#1877F2] font-bold hover:underline cursor-pointer"
+              >
+                Forgot Password?
+              </button>
+            </div>
           </form>
         )}
 
