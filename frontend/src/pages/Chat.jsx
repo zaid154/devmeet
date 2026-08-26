@@ -8,14 +8,58 @@ import { useTheme } from '../context/ThemeContext';
 import { BASE_URL } from '../utils/constants';
 import CallOverlay from '../components/CallOverlay';
 
-// Curated GIFs
-const POPULAR_GIFS = [
-  'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExN3Q4eGg2Y3h2N2FkNjR3OXJvZ3J2bDJ1dG96MDFob2ZlZTNubHZwZSZlcD12MV9naWZzX3NlYXJjaCZjdD1n/3o7TKSjRrfIPjeiVyM/giphy.gif',
-  'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExNHR1NnFsd3F3dTZ4NGZidG10NnJybWltM2hpeGZ0NXg0NXA5ZDNvOCZlcD12MV9naWZzX3NlYXJjaCZjdD1n/l0MYt5jPR6QX5pnqM/giphy.gif',
-  'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExZ3N2bzdrNHlhZmpzdnVibHR2dnlqd2g2MWU2OHBqdW9hMXc4cXRxeSZlcD12MV9naWZzX3NlYXJjaCZjdD1n/ICOgUNjpvO0PC/giphy.gif',
-  'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExOHpqd2ZlOG41cWVmd2hjcWZlZXk2NGcydnVsc214b2dqaHR0MmgxaCZlcD12MV9naWZzX3NlYXJjaCZjdD1n/ASd0Ukj0y3qMM/giphy.gif',
-  'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExMnV1cmg1anpsdDZlMnptdHpqNmtveXJ6MnBwNmtob3M1bWFpdDdtYiZlcD12MV9naWZzX3NlYXJjaCZjdD1n/l3q2K5jinAlChoCLS/giphy.gif',
-  'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExeGJ0cm9tdmYyZWh5MW1mMWl4anRqczIydzdrOW9ocG5xZHA1MnN2YSZlcD12MV9naWZzX3NlYXJjaCZjdD1n/3oz8xAFtqoOUUrsh7W/giphy.gif'
+// Curated GIF Categories & Library
+const GIF_CATEGORIES = [
+  {
+    id: 'trending',
+    name: '🔥 Trending',
+    gifs: [
+      'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExN3Q4eGg2Y3h2N2FkNjR3OXJvZ3J2bDJ1dG96MDFob2ZlZTNubHZwZSZlcD12MV9naWZzX3NlYXJjaCZjdD1n/3o7TKSjRrfIPjeiVyM/giphy.gif',
+      'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExNHR1NnFsd3F3dTZ4NGZidG10NnJybWltM2hpeGZ0NXg0NXA5ZDNvOCZlcD12MV9naWZzX3NlYXJjaCZjdD1n/l0MYt5jPR6QX5pnqM/giphy.gif',
+      'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExZ3N2bzdrNHlhZmpzdnVibHR2dnlqd2g2MWU2OHBqdW9hMXc4cXRxeSZlcD12MV9naWZzX3NlYXJjaCZjdD1n/ICOgUNjpvO0PC/giphy.gif',
+      'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExOHpqd2ZlOG41cWVmd2hjcWZlZXk2NGcydnVsc214b2dqaHR0MmgxaCZlcD12MV9naWZzX3NlYXJjaCZjdD1n/ASd0Ukj0y3qMM/giphy.gif',
+      'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExMnV1cmg1anpsdDZlMnptdHpqNmtveXJ6MnBwNmtob3M1bWFpdDdtYiZlcD12MV9naWZzX3NlYXJjaCZjdD1n/l3q2K5jinAlChoCLS/giphy.gif',
+      'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExeGJ0cm9tdmYyZWh5MW1mMWl4anRqczIydzdrOW9ocG5xZHA1MnN2YSZlcD12MV9naWZzX3NlYXJjaCZjdD1n/3oz8xAFtqoOUUrsh7W/giphy.gif'
+    ]
+  },
+  {
+    id: 'romance',
+    name: '💖 Romance',
+    gifs: [
+      'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExdm9hOTJkMjJzZG1sdjFhc2kydGtzOHU5aXFjcWFudHkxdm4xMWo4eSZlcD12MV9naWZzX3NlYXJjaCZjdD1n/26FLdm964upJJaqCQ/giphy.gif',
+      'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExc29lOG50MjU0eDVpdTJsa21kMzJjcWZ0dHpkb3E2dm01ZGN6bnNkayZlcD12MV9naWZzX3NlYXJjaCZjdD1n/M90mJvfWfd5mbUuULX/giphy.gif',
+      'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExdzM2czdpZXNldnlzd2Njc3YydmZ3cG5kYWc4cWNqc292cm8za2s3cyZlcD12MV9naWZzX3NlYXJjaCZjdD1n/lTQF0ODLLjhza/giphy.gif',
+      'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExMzdxYmpjdnhqdWl6dTZmd2E4OHZ4bW1jYnRsa3M1N2V3eGhkdHpnMiZlcD12MV9naWZzX3NlYXJjaCZjdD1n/26BRv0ThflsDTqUXa/giphy.gif'
+    ]
+  },
+  {
+    id: 'dev',
+    name: '💻 Dev & Tech',
+    gifs: [
+      'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExd2RveDVkdG1rcnpxM2k2Y3M0OXdpOG85OHM2anQ3MWZtZDNocW5mciZlcD12MV9naWZzX3NlYXJjaCZjdD1n/ule4akeXnUSva/giphy.gif',
+      'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExcWc1bXFwNzdyMXAxdWZldnh2N3psY3kxcGplOWVpbmphM2cxa20wZyZlcD12MV9naWZzX3NlYXJjaCZjdD1n/unQ3IJU2RG7DO/giphy.gif',
+      'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExM3h0Y3Q0dXZqdzUzd3V4aWFjczZmaDNocmt1enp6enZlNWg4c2ZpcyZlcD12MV9naWZzX3NlYXJjaCZjdD1n/13HgwGsXF0aiGY/giphy.gif',
+      'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExYnJ2dnVpY2FjdnprOHhsaXN2YnVndm0xMnN5bTN3ZnBrcWZ1NXhjayZlcD12MV9naWZzX3NlYXJjaCZjdD1n/LmNwrBhejkK9EFP504/giphy.gif'
+    ]
+  },
+  {
+    id: 'funny',
+    name: '🤣 Memes',
+    gifs: [
+      'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExcjlqb2s3OHZocjZtcHdtb29pOGEwazM1M2Uyc3lzdHZ1N2J0eTZ4cyZlcD12MV9naWZzX3NlYXJjaCZjdD1n/bC9czlgCMtw4cj8RgH/giphy.gif',
+      'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExcjdrd3p4dWR6Mmp5dnVtdHpsdW5ldTZwbWFlazFlYm9xN2x4Mml0byZlcD12MV9naWZzX3NlYXJjaCZjdD1n/xT0xeJpnrWC4XWblEk/giphy.gif',
+      'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExNDY2anNnd3V1eGtpMmF3Ym0zd21wb2Zpd3JzNXo5bHVwNHZ3aG11ZyZlcD12MV9naWZzX3NlYXJjaCZjdD1n/3oEjHAUOqG3lSS0f1C/giphy.gif',
+      'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExYml3Y2hkbTV3dnJsaG9pZWNucTFpY3Vpd2N2YnkzbG44ajZucHJ3bSZlcD12MV9naWZzX3NlYXJjaCZjdD1n/10JhviFuU2gWD6/giphy.gif'
+    ]
+  }
+];
+
+const ICEBREAKERS = [
+  "Tabs or Spaces?",
+  "What is your dream tech stack?",
+  "Coffee or Energy Drink during late night deploys?",
+  "What project are you most proud of?",
+  "Dark theme or Light theme?"
 ];
 
 // Clean Vector SVG Icons
@@ -119,9 +163,13 @@ const Chat = () => {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Media pickers
+  // Media pickers & enhancements
   const [showEmoji, setShowEmoji] = useState(false);
   const [showGifPicker, setShowGifPicker] = useState(false);
+  const [activeGifTab, setActiveGifTab] = useState('trending');
+  const [gifSearch, setGifSearch] = useState('');
+  const [activeLightbox, setActiveLightbox] = useState(null);
+  const [isUploadingMedia, setIsUploadingMedia] = useState(false);
   const [isRecordingVoice, setIsRecordingVoice] = useState(false);
   const [voiceDuration, setVoiceDuration] = useState(0);
 
@@ -273,6 +321,7 @@ const Chat = () => {
   const handleImageSelect = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    setIsUploadingMedia(true);
     const formData = new FormData();
     formData.append('file', file);
     try {
@@ -280,11 +329,25 @@ const Chat = () => {
         withCredentials: true,
         headers: { 'Content-Type': 'multipart/form-data' }
       });
-      if (res.data.status && res.data.url) {
-        handleSendMessage({ type: 'image', mediaUrl: res.data.url, text: '📷 Photo' });
+      if (res.data.status && (res.data.url || res.data.data?.mediaUrl)) {
+        const imgUrl = res.data.url || res.data.data?.mediaUrl;
+        handleSendMessage({ type: 'image', mediaUrl: imgUrl, text: '📷 Photo' });
+      } else {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          handleSendMessage({ type: 'image', mediaUrl: reader.result, text: '📷 Photo' });
+        };
+        reader.readAsDataURL(file);
       }
     } catch (err) {
-      alert('Failed to upload image');
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        handleSendMessage({ type: 'image', mediaUrl: reader.result, text: '📷 Photo' });
+      };
+      reader.readAsDataURL(file);
+    } finally {
+      setIsUploadingMedia(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
 
@@ -640,20 +703,38 @@ const Chat = () => {
                       border: isMine ? 'none' : '1px solid var(--bubble-received-border)',
                     }}
                   >
-                    {/* Image */}
+                    {/* Image Message (Click to view full screen) */}
                     {m.type === 'image' && m.mediaUrl && (
-                      <img src={m.mediaUrl} alt="Shared" className="rounded-xl max-h-60 w-full object-cover cursor-pointer mb-1" onError={(e) => { e.target.style.display = 'none'; }} />
+                      <div className="relative group cursor-pointer overflow-hidden rounded-xl">
+                        <img
+                          src={m.mediaUrl}
+                          alt="Shared Photo"
+                          onClick={() => setActiveLightbox(m.mediaUrl)}
+                          className="rounded-xl max-h-64 w-full object-cover transition-transform group-hover:scale-102"
+                          onError={(e) => { e.target.style.display = 'none'; }}
+                        />
+                        <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">
+                          <span className="bg-black/60 text-white text-[11px] font-bold px-2.5 py-1 rounded-full backdrop-blur-xs">🔍 Click to zoom</span>
+                        </div>
+                      </div>
                     )}
 
-                    {/* GIF */}
+                    {/* GIF Message */}
                     {m.type === 'gif' && m.mediaUrl && (
-                      <img src={m.mediaUrl} alt="GIF" className="rounded-xl max-h-52 w-full object-cover mb-1" />
+                      <div className="relative group cursor-pointer overflow-hidden rounded-xl">
+                        <img
+                          src={m.mediaUrl}
+                          alt="GIF"
+                          onClick={() => setActiveLightbox(m.mediaUrl)}
+                          className="rounded-xl max-h-56 w-full object-cover transition-transform group-hover:scale-102"
+                        />
+                      </div>
                     )}
 
                     {/* Voice Note */}
                     {m.type === 'voice_note' && m.mediaUrl && (
                       <div className="flex items-center space-x-2 py-1">
-                        <span className="text-base">🎤</span>
+                        <MicIcon className="w-4 h-4 text-emerald-500" />
                         <audio src={m.mediaUrl} controls className="h-8 max-w-[200px]" style={{ filter: isMine ? 'invert(1) brightness(2)' : isDark ? 'invert(1) brightness(1.5)' : 'none' }} />
                       </div>
                     )}
@@ -670,6 +751,16 @@ const Chat = () => {
                 </div>
               );
             })}
+
+            {/* Uploading Media Indicator */}
+            {isUploadingMedia && (
+              <div className="flex justify-end items-center space-x-2">
+                <div className="rounded-2xl px-4 py-2.5 flex items-center space-x-2 border shadow-xs" style={{ backgroundColor: 'var(--accent-light)', borderColor: 'var(--accent)' }}>
+                  <div className="w-3.5 h-3.5 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: 'var(--accent)', borderTopColor: 'transparent' }} />
+                  <span className="text-xs font-bold" style={{ color: 'var(--accent)' }}>Uploading photo...</span>
+                </div>
+              </div>
+            )}
 
             {/* Typing Indicator */}
             {isTargetTyping && (
@@ -688,16 +779,47 @@ const Chat = () => {
             <div ref={messagesEndRef} />
           </div>
 
-          {/* GIF Picker */}
+          {/* Advanced Multi-Category GIF Picker */}
           {showGifPicker && (
-            <div className="absolute bottom-20 left-4 sm:left-6 z-40 w-72 sm:w-80 rounded-2xl p-4 space-y-3 border shadow-xl" style={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border-color)' }}>
-              <div className="flex justify-between items-center">
-                <h4 className="text-xs font-bold uppercase" style={{ color: 'var(--text-muted)' }}>Select a GIF</h4>
-                <button onClick={() => setShowGifPicker(false)} className="text-xs cursor-pointer" style={{ color: 'var(--text-muted)' }}>✕</button>
+            <div className="absolute bottom-20 left-4 sm:left-6 z-40 w-80 sm:w-96 rounded-2xl p-4 space-y-3 border shadow-2xl animate-in zoom-in-95" style={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border-color)' }}>
+              <div className="flex justify-between items-center pb-1 border-b" style={{ borderColor: 'var(--border-color)' }}>
+                <h4 className="text-xs font-black uppercase tracking-wider" style={{ color: 'var(--text-primary)' }}>Select Animated GIF</h4>
+                <button onClick={() => setShowGifPicker(false)} className="text-xs font-bold p-1 hover:opacity-70 cursor-pointer" style={{ color: 'var(--text-muted)' }}>✕</button>
               </div>
-              <div className="grid grid-cols-2 gap-2 max-h-56 overflow-y-auto">
-                {POPULAR_GIFS.map((gif, idx) => (
-                  <img key={idx} src={gif} alt="gif" onClick={() => handleSendGif(gif)} className="rounded-xl h-24 w-full object-cover cursor-pointer hover:opacity-80 transition-opacity" />
+
+              {/* Category Pills */}
+              <div className="flex space-x-1.5 overflow-x-auto pb-1">
+                {GIF_CATEGORIES.map((cat) => (
+                  <button
+                    key={cat.id}
+                    onClick={() => { setActiveGifTab(cat.id); setGifSearch(''); }}
+                    className={`px-2.5 py-1 rounded-full text-[11px] font-bold whitespace-nowrap transition-colors cursor-pointer border ${
+                      activeGifTab === cat.id ? 'text-white' : 'hover:opacity-80'
+                    }`}
+                    style={{
+                      backgroundColor: activeGifTab === cat.id ? 'var(--accent)' : 'var(--bg-input)',
+                      borderColor: activeGifTab === cat.id ? 'var(--accent)' : 'var(--border-color)',
+                      color: activeGifTab === cat.id ? '#ffffff' : 'var(--text-secondary)'
+                    }}
+                  >
+                    {cat.name}
+                  </button>
+                ))}
+              </div>
+
+              {/* GIF Grid */}
+              <div className="grid grid-cols-2 gap-2 max-h-60 overflow-y-auto pr-1">
+                {(GIF_CATEGORIES.find(c => c.id === activeGifTab)?.gifs || []).map((gif, idx) => (
+                  <div
+                    key={idx}
+                    onClick={() => handleSendGif(gif)}
+                    className="relative group rounded-xl overflow-hidden h-28 bg-black/5 cursor-pointer border border-transparent hover:border-[#fe3c72] transition-all"
+                  >
+                    <img src={gif} alt="GIF" className="w-full h-full object-cover transition-transform group-hover:scale-105" loading="lazy" />
+                    <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                      <span className="text-[10px] font-black text-white bg-[#fe3c72] px-2 py-0.5 rounded-full shadow-xs">Send ✈️</span>
+                    </div>
+                  </div>
                 ))}
               </div>
             </div>
@@ -813,6 +935,39 @@ const Chat = () => {
           <p className="text-xs max-w-xs" style={{ color: 'var(--text-muted)' }}>
             Choose a match from the sidebar to chat, call, or share something fun.
           </p>
+        </div>
+      )}
+
+      {/* Fullscreen Image/GIF Lightbox Modal */}
+      {activeLightbox && (
+        <div
+          onClick={() => setActiveLightbox(null)}
+          className="fixed inset-0 z-50 bg-black/90 backdrop-blur-md flex items-center justify-center p-4 cursor-pointer animate-in fade-in"
+        >
+          <div className="relative max-w-4xl max-h-[90vh] flex flex-col items-center" onClick={(e) => e.stopPropagation()}>
+            <img
+              src={activeLightbox}
+              alt="Full view"
+              className="max-h-[80vh] max-w-full rounded-2xl object-contain shadow-2xl border border-white/10"
+            />
+            <div className="flex items-center space-x-3 mt-4">
+              <a
+                href={activeLightbox}
+                target="_blank"
+                rel="noopener noreferrer"
+                download="devmeet-media"
+                className="bg-white/20 hover:bg-white/30 text-white text-xs font-bold px-4 py-2 rounded-full backdrop-blur-xs transition-colors flex items-center space-x-1.5"
+              >
+                <span>⬇️ Open Original</span>
+              </a>
+              <button
+                onClick={() => setActiveLightbox(null)}
+                className="bg-white/20 hover:bg-white/30 text-white text-xs font-bold px-4 py-2 rounded-full backdrop-blur-xs transition-colors cursor-pointer"
+              >
+                ✕ Close
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
