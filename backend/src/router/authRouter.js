@@ -354,8 +354,8 @@ router.post('/reset-password', async (req, res) => {
 
 
 // =========================================================================
-// 7. SEND OTP API (Phone or Email OTP)
-// Kaam: 6-digit OTP passcode generate karta hai aur cache me store karta hai.
+// 7. SEND OTP API (Email OTP via Nodemailer)
+// Kaam: 6-digit OTP passcode generate karta hai aur user ke email par send karta hai.
 // Kab use hota hai: Modal me login ke time OTP generate karne ke liye.
 // =========================================================================
 router.post('/send-otp', async (req, res) => {
@@ -364,25 +364,72 @@ router.post('/send-otp', async (req, res) => {
         if (!identifier) {
             return res.status(400).send({
                 status: false,
-                message: "Phone number or email is required"
+                message: "Email address is required"
             });
         }
 
-        const cleanIdentifier = identifier.toString().trim();
+        const cleanIdentifier = identifier.toString().trim().toLowerCase();
         const otp = Math.floor(100000 + Math.random() * 900000).toString();
 
         otpCache.set(cleanIdentifier, {
             otp: otp,
-            expiresAt: Date.now() + 5 * 60 * 1000 // 5 minutes
+            expiresAt: Date.now() + 10 * 60 * 1000 // 10 minutes
         });
 
-        console.log(`[AUTH OTP] OTP for ${cleanIdentifier}: ${otp}`);
+        console.log(`[AUTH OTP] Verification OTP for ${cleanIdentifier}: ${otp}`);
+
+        // Send real email via Nodemailer
+        if (cleanIdentifier.includes('@')) {
+            try {
+                const nodemailer = require('nodemailer');
+                const transporter = nodemailer.createTransport({
+                    host: process.env.SMTP_HOST || 'smtp.gmail.com',
+                    port: Number(process.env.SMTP_PORT) || 587,
+                    secure: process.env.SMTP_SECURE === 'true',
+                    auth: {
+                        user: process.env.SMTP_USER || 'trendykart.app@gmail.com',
+                        pass: process.env.SMTP_PASS || 'ziqyiszqfggqgrjm'
+                    }
+                });
+
+                await transporter.sendMail({
+                    from: process.env.SMTP_FROM || `"DevMeet" <${process.env.SMTP_USER || 'trendykart.app@gmail.com'}>`,
+                    to: cleanIdentifier,
+                    subject: `🔥 Your DevMeet Verification Code is ${otp}`,
+                    html: `
+                        <div style="font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 500px; margin: auto; padding: 32px 24px; border: 1px solid #f0f0f0; border-radius: 24px; background: #ffffff; color: #111418;">
+                            <div style="text-align: center; margin-bottom: 24px;">
+                                <h1 style="color: #111418; font-size: 28px; font-weight: 900; margin: 0; letter-spacing: -0.5px;">dev<span style="color: #c8102e;">meet</span></h1>
+                                <p style="color: #71717a; font-size: 13px; margin-top: 4px; font-weight: 600;">Dating & Networking for Developers</p>
+                            </div>
+                            
+                            <div style="background: #fafafa; border-radius: 18px; padding: 24px; text-align: center; border: 1px solid #f0f0f0; margin-bottom: 24px;">
+                                <p style="font-size: 14px; font-weight: 700; color: #52525b; margin: 0 0 12px 0; text-transform: uppercase; letter-spacing: 1px;">Your 6-Digit Passcode</p>
+                                <div style="font-size: 38px; font-weight: 900; letter-spacing: 8px; color: #c8102e; font-family: monospace;">${otp}</div>
+                                <p style="font-size: 12px; color: #a1a1aa; margin: 12px 0 0 0;">Valid for 10 minutes. Do not share this code with anyone.</p>
+                            </div>
+
+                            <p style="font-size: 13px; color: #71717a; line-height: 1.6; margin: 0;">
+                                If you didn't request this code, you can safely ignore this email.
+                            </p>
+
+                            <hr style="border: none; border-top: 1px solid #f4f4f5; margin: 24px 0;" />
+                            <p style="font-size: 11px; color: #a1a1aa; text-align: center; margin: 0;">
+                                &copy; 2026 DevMeet Inc. All rights reserved.
+                            </p>
+                        </div>
+                    `
+                });
+                console.log(`[AUTH OTP] Email successfully sent to ${cleanIdentifier}`);
+            } catch (mailErr) {
+                console.error(`[AUTH OTP] Nodemailer send error:`, mailErr.message);
+            }
+        }
 
         res.send({
             status: true,
-            message: `One-time passcode sent to ${cleanIdentifier}`,
-            demoCode: otp,
-            expiresInSeconds: 300
+            message: `Verification passcode sent to ${cleanIdentifier}`,
+            expiresInSeconds: 600
         });
     } catch (error) {
         res.status(500).send({

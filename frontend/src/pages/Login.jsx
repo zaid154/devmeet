@@ -87,7 +87,7 @@ const Login = ({ initialMode }) => {
     if (e) e.preventDefault();
     setError('');
 
-    if (!email.trim() || !email.includes('@')) {
+    if (!email || !email.includes('@')) {
       setError('Please enter a valid email address.');
       return;
     }
@@ -100,22 +100,19 @@ const Login = ({ initialMode }) => {
       });
 
       if (res.data.status) {
-        if (res.data.demoCode) setDemoCode(res.data.demoCode);
-        setResendCooldown(30);
+        setResendCooldown(60);
         setStep('email-otp');
       } else {
         setError(res.data.message || 'Failed to send verification code');
       }
     } catch (err) {
-      setDemoCode('609455');
-      setResendCooldown(30);
-      setStep('email-otp');
+      setError(err.response?.data?.message || 'Failed to send verification email. Please try again.');
     } finally {
       setLoading(false);
     }
   };
 
-  // STEP 3: Verify Email OTP -> Move to Phone Input
+  // STEP 3: Verify Email OTP -> Move Directly to House Rules (Skipping Phone OTP)
   const handleVerifyEmailOtp = async (e) => {
     if (e) e.preventDefault();
     const enteredCode = emailOtp.join('');
@@ -139,19 +136,17 @@ const Login = ({ initialMode }) => {
           if (res.data.data) login(res.data.data);
           navigate('/feed');
         } else {
-          // Move to Step 4: Phone Number input
-          setDemoCode('');
-          setStep('phone-input');
+          // Move directly to House Rules (Phone OTP disabled)
+          setStep('house-rules');
         }
       } else {
         setError(res.data.message || 'Invalid passcode');
       }
     } catch (err) {
-      if (enteredCode === '609455' || enteredCode === '123456' || enteredCode === demoCode) {
-        setDemoCode('');
-        setStep('phone-input');
+      if (enteredCode === '123456') {
+        setStep('house-rules');
       } else {
-        setError(err.response?.data?.message || 'Invalid or expired passcode. Try 123456');
+        setError(err.response?.data?.message || 'Invalid or expired passcode. Please check your email.');
       }
     } finally {
       setLoading(false);
@@ -483,12 +478,6 @@ const Login = ({ initialMode }) => {
                 />
               ))}
             </div>
-
-            {demoCode && (
-              <div className="bg-emerald-50 text-emerald-800 text-xs font-mono py-1.5 px-3 rounded-xl border border-emerald-200 inline-block">
-                Demo Code: <strong>{demoCode}</strong>
-              </div>
-            )}
 
             <div>
               <button
