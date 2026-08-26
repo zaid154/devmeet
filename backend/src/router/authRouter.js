@@ -4,6 +4,7 @@ const bcrypt = require('bcrypt');
 const crypto = require('crypto');
 const userModel = require('../modal/user');
 const { validateUser } = require('../utils/validation');
+const { sendEmail } = require('../utils/emailService');
 
 // Temporary in-memory OTP store for phone / email login
 const otpCache = new Map();
@@ -257,38 +258,25 @@ router.post('/forgot-password', async (req, res) => {
 
         // Nodemailer send reset email
         try {
-            if (process.env.SMTP_USER && process.env.SMTP_PASS) {
-                const nodemailer = require('nodemailer');
-                const transporter = nodemailer.createTransport({
-                    host: process.env.SMTP_HOST || 'smtp.gmail.com',
-                    port: Number(process.env.SMTP_PORT) || 587,
-                    secure: process.env.SMTP_SECURE === 'true',
-                    auth: {
-                        user: process.env.SMTP_USER,
-                        pass: process.env.SMTP_PASS
-                    }
-                });
+            const frontendUrl = process.env.CLIENT_URL || process.env.FRONTEND_URL || 'http://localhost:5173';
+            const resetUrl = `${frontendUrl}/reset-password?token=${resetToken}`;
 
-                const frontendUrl = process.env.CLIENT_URL || process.env.FRONTEND_URL || 'http://localhost:5173';
-                const resetUrl = `${frontendUrl}/reset-password?token=${resetToken}`;
-
-                await transporter.sendMail({
-                    from: process.env.SMTP_FROM || `"DevMeet" <${process.env.SMTP_USER}>`,
-                    to: user.email,
-                    subject: '🔒 Reset Your DevMeet Password',
-                    html: `
-                        <div style="font-family: Arial, sans-serif; max-width: 480px; margin: auto; padding: 24px; border: 1px solid #eee; border-radius: 16px;">
-                            <h2 style="color: #fe3c72; margin-bottom: 8px;">DevMeet Password Reset</h2>
-                            <p style="color: #444;">Hi ${user.firstName},</p>
-                            <p style="color: #444;">You requested to reset your password. Click the link below to set a new password:</p>
-                            <div style="text-align: center; margin: 24px 0;">
-                                <a href="${resetUrl}" style="background: #fe3c72; color: #fff; text-decoration: none; padding: 12px 24px; border-radius: 30px; font-weight: bold; display: inline-block;">Reset Password</a>
-                            </div>
-                            <p style="color: #888; font-size: 12px;">This link will expire in 1 hour.</p>
+            await sendEmail({
+                to: user.email,
+                subject: '🔒 Reset Your DevMeet Password',
+                text: `You requested to reset your password. Click here: ${resetUrl}`,
+                html: `
+                    <div style="font-family: Arial, sans-serif; max-width: 480px; margin: auto; padding: 24px; border: 1px solid #eee; border-radius: 16px;">
+                        <h2 style="color: #fe3c72; margin-bottom: 8px;">DevMeet Password Reset</h2>
+                        <p style="color: #444;">Hi ${user.firstName},</p>
+                        <p style="color: #444;">You requested to reset your password. Click the link below to set a new password:</p>
+                        <div style="text-align: center; margin: 24px 0;">
+                            <a href="${resetUrl}" style="background: #fe3c72; color: #fff; text-decoration: none; padding: 12px 24px; border-radius: 30px; font-weight: bold; display: inline-block;">Reset Password</a>
                         </div>
-                    `
-                });
-            }
+                        <p style="color: #888; font-size: 12px;">This link will expire in 1 hour.</p>
+                    </div>
+                `
+            });
         } catch (emailErr) {
             console.log("Email send warning:", emailErr.message);
         }
@@ -380,51 +368,34 @@ router.post('/send-otp', async (req, res) => {
 
         // Send real email via Nodemailer
         if (cleanIdentifier.includes('@')) {
-            try {
-                const nodemailer = require('nodemailer');
-                const transporter = nodemailer.createTransport({
-                    service: 'gmail',
-                    auth: {
-                        user: process.env.SMTP_USER || 'trendykart.app@gmail.com',
-                        pass: process.env.SMTP_PASS || 'ziqyiszqfggqgrjm'
-                    }
-                });
-
-                const mailOptions = {
-                    from: process.env.SMTP_FROM || `"DevMeet" <${process.env.SMTP_USER || 'trendykart.app@gmail.com'}>`,
-                    to: cleanIdentifier,
-                    subject: `🔥 Your DevMeet Verification Code is ${otp}`,
-                    text: `Your DevMeet verification code is: ${otp}. It expires in 10 minutes.`,
-                    html: `
-                        <div style="font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 500px; margin: auto; padding: 32px 24px; border: 1px solid #f0f0f0; border-radius: 24px; background: #ffffff; color: #111418;">
-                            <div style="text-align: center; margin-bottom: 24px;">
-                                <h1 style="color: #111418; font-size: 28px; font-weight: 900; margin: 0; letter-spacing: -0.5px;">dev<span style="color: #c8102e;">meet</span></h1>
-                                <p style="color: #71717a; font-size: 13px; margin-top: 4px; font-weight: 600;">Dating & Networking for Developers</p>
-                            </div>
-                            
-                            <div style="background: #fafafa; border-radius: 18px; padding: 24px; text-align: center; border: 1px solid #f0f0f0; margin-bottom: 24px;">
-                                <p style="font-size: 14px; font-weight: 700; color: #52525b; margin: 0 0 12px 0; text-transform: uppercase; letter-spacing: 1px;">Your 6-Digit Passcode</p>
-                                <div style="font-size: 38px; font-weight: 900; letter-spacing: 8px; color: #c8102e; font-family: monospace;">${otp}</div>
-                                <p style="font-size: 12px; color: #a1a1aa; margin: 12px 0 0 0;">Valid for 10 minutes. Do not share this code with anyone.</p>
-                            </div>
-
-                            <p style="font-size: 13px; color: #71717a; line-height: 1.6; margin: 0;">
-                                If you didn't request this code, you can safely ignore this email.
-                            </p>
-
-                            <hr style="border: none; border-top: 1px solid #f4f4f5; margin: 24px 0;" />
-                            <p style="font-size: 11px; color: #a1a1aa; text-align: center; margin: 0;">
-                                &copy; 2026 DevMeet Inc. All rights reserved.
-                            </p>
+            await sendEmail({
+                to: cleanIdentifier,
+                subject: `🔥 Your DevMeet Verification Code is ${otp}`,
+                text: `Your DevMeet verification code is: ${otp}. It expires in 10 minutes.`,
+                html: `
+                    <div style="font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 500px; margin: auto; padding: 32px 24px; border: 1px solid #f0f0f0; border-radius: 24px; background: #ffffff; color: #111418;">
+                        <div style="text-align: center; margin-bottom: 24px;">
+                            <h1 style="color: #111418; font-size: 28px; font-weight: 900; margin: 0; letter-spacing: -0.5px;">dev<span style="color: #c8102e;">meet</span></h1>
+                            <p style="color: #71717a; font-size: 13px; margin-top: 4px; font-weight: 600;">Dating & Networking for Developers</p>
                         </div>
-                    `
-                };
+                        
+                        <div style="background: #fafafa; border-radius: 18px; padding: 24px; text-align: center; border: 1px solid #f0f0f0; margin-bottom: 24px;">
+                            <p style="font-size: 14px; font-weight: 700; color: #52525b; margin: 0 0 12px 0; text-transform: uppercase; letter-spacing: 1px;">Your 6-Digit Passcode</p>
+                            <div style="font-size: 38px; font-weight: 900; letter-spacing: 8px; color: #c8102e; font-family: monospace;">${otp}</div>
+                            <p style="font-size: 12px; color: #a1a1aa; margin: 12px 0 0 0;">Valid for 10 minutes. Do not share this code with anyone.</p>
+                        </div>
 
-                const info = await transporter.sendMail(mailOptions);
-                console.log(`[AUTH OTP] Email successfully sent to ${cleanIdentifier}. Response: ${info.response}`);
-            } catch (mailErr) {
-                console.error(`[AUTH OTP] Nodemailer send error:`, mailErr);
-            }
+                        <p style="font-size: 13px; color: #71717a; line-height: 1.6; margin: 0;">
+                            If you didn't request this code, you can safely ignore this email.
+                        </p>
+
+                        <hr style="border: none; border-top: 1px solid #f4f4f5; margin: 24px 0;" />
+                        <p style="font-size: 11px; color: #a1a1aa; text-align: center; margin: 0;">
+                            &copy; 2026 DevMeet Inc. All rights reserved.
+                        </p>
+                    </div>
+                `
+            });
         }
 
         res.send({
