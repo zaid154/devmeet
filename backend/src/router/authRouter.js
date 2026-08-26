@@ -284,13 +284,13 @@ router.post('/forgot-password', async (req, res) => {
 
 <!-- Header -->
 <tr><td style="background:linear-gradient(135deg,#c8102e 0%,#ff4458 100%);padding:32px 24px;text-align:center;">
-<h1 style="margin:0;font-size:28px;font-weight:900;color:#ffffff;letter-spacing:-0.5px;">dev<span style="opacity:0.85;">meet</span></h1>
+<h1 style="margin:0;font-size:28px;font-weight:900;color:#ffffff;letter-spacing:-0.5px;">Dev<span style="opacity:0.9;">Meet</span></h1>
 <p style="margin:6px 0 0;font-size:12px;color:rgba(255,255,255,0.8);font-weight:500;letter-spacing:0.5px;">PASSWORD RESET</p>
 </td></tr>
 
 <!-- Body -->
 <tr><td style="padding:36px 32px 20px;">
-<p style="margin:0 0 6px;font-size:15px;color:#333;font-weight:600;">Hi ${user.firstName}! 👋</p>
+<p style="margin:0 0 6px;font-size:15px;color:#333;font-weight:600;">Hi ${user.firstName},</p>
 <p style="margin:0 0 28px;font-size:14px;color:#666;line-height:1.6;">We received a request to reset your DevMeet account password. Click the button below to set a new password.</p>
 
 <!-- Reset Button -->
@@ -429,13 +429,13 @@ router.post('/send-otp', async (req, res) => {
 
 <!-- Header -->
 <tr><td style="background:linear-gradient(135deg,#c8102e 0%,#ff4458 100%);padding:32px 24px;text-align:center;">
-<h1 style="margin:0;font-size:28px;font-weight:900;color:#ffffff;letter-spacing:-0.5px;">dev<span style="opacity:0.85;">meet</span></h1>
+<h1 style="margin:0;font-size:28px;font-weight:900;color:#ffffff;letter-spacing:-0.5px;">Dev<span style="opacity:0.9;">Meet</span></h1>
 <p style="margin:6px 0 0;font-size:12px;color:rgba(255,255,255,0.8);font-weight:500;letter-spacing:0.5px;">VERIFICATION CODE</p>
 </td></tr>
 
 <!-- Body -->
 <tr><td style="padding:36px 32px 20px;">
-<p style="margin:0 0 6px;font-size:15px;color:#333;font-weight:600;">Hi there! 👋</p>
+<p style="margin:0 0 6px;font-size:15px;color:#333;font-weight:600;">Hi there!</p>
 <p style="margin:0 0 28px;font-size:14px;color:#666;line-height:1.6;">Use the verification code below to complete your sign-in to DevMeet.</p>
 
 <!-- OTP Box -->
