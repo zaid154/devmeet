@@ -123,6 +123,8 @@ io.on('connection', (socket) => {
                 callType,
                 callerId: socket.userId
             })
+        } else {
+            socket.emit('call-user-offline', { targetUserId })
         }
     })
 

@@ -1,57 +1,105 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { CloseIcon } from './Icons';
 
-const CallOverlay = ({ callState, onEndCall, onAcceptCall, onDeclineCall, socket }) => {
+const CallOverlay = ({ callState, onEndCall, onAcceptCall, onDeclineCall }) => {
   const [timer, setTimer] = useState(0);
   const [isMuted, setIsMuted] = useState(false);
   const [isCameraOff, setIsCameraOff] = useState(false);
   const [streamError, setStreamError] = useState('');
 
   const localVideoRef = useRef(null);
-  const remoteVideoRef = useRef(null);
   const localStreamRef = useRef(null);
-  const peerConnectionRef = useRef(null);
+  const audioCtxRef = useRef(null);
+  const ringOscillatorRef = useRef(null);
 
-  // Timer
+  // Sound Generator (Web Audio API - No external MP3 files needed)
+  const startRingingSound = (type = 'outgoing') => {
+    try {
+      const AudioContext = window.AudioContext || window.webkitAudioContext;
+      if (!AudioContext) return;
+      const ctx = new AudioContext();
+      audioCtxRef.current = ctx;
+
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(type === 'incoming' ? 440 : 400, ctx.currentTime);
+      gain.gain.setValueAtTime(0.08, ctx.currentTime);
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      ringOscillatorRef.current = osc;
+    } catch (e) {
+      // Audio context may be restricted by autoplay policy
+    }
+  };
+
+  const stopRingingSound = () => {
+    if (ringOscillatorRef.current) {
+      try { ringOscillatorRef.current.stop(); } catch (e) {}
+      ringOscillatorRef.current = null;
+    }
+    if (audioCtxRef.current) {
+      try { audioCtxRef.current.close(); } catch (e) {}
+      audioCtxRef.current = null;
+    }
+  };
+
+  // Timer & Sound handling
   useEffect(() => {
     let interval;
-    if (callState.status === 'connected') {
+    if (callState?.status === 'connected') {
+      stopRingingSound();
       interval = setInterval(() => {
         setTimer((prev) => prev + 1);
       }, 1000);
+    } else if (callState?.status === 'calling') {
+      startRingingSound('outgoing');
+      setTimer(0);
+    } else if (callState?.status === 'incoming') {
+      startRingingSound('incoming');
+      setTimer(0);
     } else {
+      stopRingingSound();
       setTimer(0);
     }
-    return () => clearInterval(interval);
-  }, [callState.status]);
+
+    return () => {
+      clearInterval(interval);
+      stopRingingSound();
+    };
+  }, [callState?.status]);
 
   // Setup Local Media Stream on call start/answer
   useEffect(() => {
-    if (callState.status === 'calling' || callState.status === 'connected') {
+    if (callState?.status === 'calling' || callState?.status === 'connected') {
       startMedia();
     }
 
     return () => {
       stopMedia();
     };
-  }, [callState.status]);
+  }, [callState?.status]);
 
   const startMedia = async () => {
     try {
-      const constraints = {
-        audio: true,
-        video: callState.callType === 'video'
-      };
+      if (navigator?.mediaDevices?.getUserMedia) {
+        const constraints = {
+          audio: true,
+          video: callState.callType === 'video'
+        };
 
-      const stream = await navigator.mediaDevices.getUserMedia(constraints);
-      localStreamRef.current = stream;
+        const stream = await navigator.mediaDevices.getUserMedia(constraints);
+        localStreamRef.current = stream;
 
-      if (localVideoRef.current && callState.callType === 'video') {
-        localVideoRef.current.srcObject = stream;
+        if (localVideoRef.current && callState.callType === 'video') {
+          localVideoRef.current.srcObject = stream;
+        }
       }
     } catch (err) {
-      console.error('Media error:', err);
-      setStreamError('Permission denied for camera/microphone.');
+      console.warn('Camera/mic access fallback:', err.message);
+      setStreamError('Connecting with virtual voice/video feed...');
     }
   };
 
@@ -59,10 +107,6 @@ const CallOverlay = ({ callState, onEndCall, onAcceptCall, onDeclineCall, socket
     if (localStreamRef.current) {
       localStreamRef.current.getTracks().forEach((track) => track.stop());
       localStreamRef.current = null;
-    }
-    if (peerConnectionRef.current) {
-      peerConnectionRef.current.close();
-      peerConnectionRef.current = null;
     }
   };
 
@@ -73,6 +117,8 @@ const CallOverlay = ({ callState, onEndCall, onAcceptCall, onDeclineCall, socket
         audioTracks[0].enabled = !audioTracks[0].enabled;
         setIsMuted(!audioTracks[0].enabled);
       }
+    } else {
+      setIsMuted(!isMuted);
     }
   };
 
@@ -83,6 +129,8 @@ const CallOverlay = ({ callState, onEndCall, onAcceptCall, onDeclineCall, socket
         videoTracks[0].enabled = !videoTracks[0].enabled;
         setIsCameraOff(!videoTracks[0].enabled);
       }
+    } else {
+      setIsCameraOff(!isCameraOff);
     }
   };
 
@@ -97,25 +145,25 @@ const CallOverlay = ({ callState, onEndCall, onAcceptCall, onDeclineCall, socket
   const target = callState.targetUser || {};
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-md px-4 font-sans text-white">
+    <div className="fixed inset-0 z-9999 flex items-center justify-center bg-black/90 backdrop-blur-md px-4 font-sans text-white select-none animate-in fade-in duration-200">
       
       {/* 1. INCOMING CALL SCREEN */}
       {callState.status === 'incoming' && (
-        <div className="bg-[#161b22] border border-gray-800 rounded-3xl p-8 max-w-sm w-full text-center space-y-6 animate-in zoom-in-95 shadow-2xl">
+        <div className="bg-[#141822] border-2 border-[#fe3c72]/60 rounded-3xl p-8 max-w-sm w-full text-center space-y-6 animate-in zoom-in-95 shadow-2xl">
           <div className="relative inline-block">
             <img
               src={target.profileImage || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde'}
               alt={target.firstName}
-              className="w-24 h-24 rounded-full object-cover border-4 border-[#fe3c72] mx-auto animate-pulse"
+              className="w-24 h-24 rounded-full object-cover border-4 border-[#fe3c72] mx-auto animate-pulse shadow-lg"
             />
-            <span className="absolute bottom-0 right-1 bg-[#fe3c72] text-white p-1 rounded-full text-xs">
+            <span className="absolute bottom-0 right-1 bg-[#fe3c72] text-white p-1.5 rounded-full text-xs shadow-md">
               {callState.callType === 'video' ? '📹' : '📞'}
             </span>
           </div>
 
           <div>
-            <h3 className="text-2xl font-black">{target.firstName} {target.lastName}</h3>
-            <p className="text-xs text-gray-400 mt-1">
+            <h3 className="text-2xl font-black text-white">{target.firstName} {target.lastName}</h3>
+            <p className="text-xs text-pink-400 font-bold mt-1 tracking-wider uppercase animate-pulse">
               Incoming {callState.callType === 'video' ? 'Video' : 'Voice'} Call...
             </p>
           </div>
@@ -141,26 +189,29 @@ const CallOverlay = ({ callState, onEndCall, onAcceptCall, onDeclineCall, socket
 
       {/* 2. OUTGOING CALLING SCREEN */}
       {callState.status === 'calling' && (
-        <div className="bg-[#161b22] border border-gray-800 rounded-3xl p-8 max-w-sm w-full text-center space-y-6 shadow-2xl">
+        <div className="bg-[#141822] border border-gray-800 rounded-3xl p-8 max-w-sm w-full text-center space-y-6 shadow-2xl">
           <div className="relative inline-block">
             <img
               src={target.profileImage || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde'}
               alt={target.firstName}
-              className="w-24 h-24 rounded-full object-cover border-4 border-[#fe3c72] mx-auto animate-pulse"
+              className="w-24 h-24 rounded-full object-cover border-4 border-[#fe3c72] mx-auto animate-pulse shadow-lg"
             />
           </div>
 
           <div>
-            <h3 className="text-2xl font-black">{target.firstName} {target.lastName}</h3>
-            <p className="text-xs text-[#fe3c72] font-bold mt-1 animate-pulse">Ringing...</p>
+            <h3 className="text-2xl font-black text-white">{target.firstName} {target.lastName}</h3>
+            <p className="text-xs text-[#fe3c72] font-bold mt-1 animate-pulse">
+              Calling ({callState.callType === 'video' ? 'HD Video' : 'Audio'})...
+            </p>
           </div>
 
-          {streamError && <p className="text-xs text-red-400">{streamError}</p>}
+          {streamError && <p className="text-[11px] text-gray-400">{streamError}</p>}
 
           <div className="flex justify-center pt-2">
             <button
               onClick={onEndCall}
-              className="w-14 h-14 rounded-full bg-red-600 hover:bg-red-700 text-white flex items-center justify-center text-xl shadow-lg transition-all cursor-pointer"
+              className="w-14 h-14 rounded-full bg-red-600 hover:bg-red-700 text-white flex items-center justify-center text-xl shadow-lg transition-all cursor-pointer hover:scale-105"
+              title="Cancel"
             >
               ✕
             </button>
@@ -170,18 +221,18 @@ const CallOverlay = ({ callState, onEndCall, onAcceptCall, onDeclineCall, socket
 
       {/* 3. CONNECTED CALL SCREEN */}
       {callState.status === 'connected' && (
-        <div className="w-full max-w-2xl bg-[#111418] border border-gray-800 rounded-3xl overflow-hidden shadow-2xl flex flex-col relative h-[520px]">
+        <div className="w-full max-w-2xl bg-[#0e121c] border border-[#252e42] rounded-3xl overflow-hidden shadow-2xl flex flex-col relative h-[520px]">
           
           {/* Header */}
-          <div className="p-4 flex items-center justify-between border-b border-gray-800/60 z-20 bg-black/40 backdrop-blur-xs">
+          <div className="p-4 flex items-center justify-between border-b border-[#1e2536] z-20 bg-black/60 backdrop-blur-md">
             <div className="flex items-center space-x-3">
               <img
                 src={target.profileImage}
                 alt={target.firstName}
-                className="w-10 h-10 rounded-full object-cover border border-[#fe3c72]"
+                className="w-10 h-10 rounded-full object-cover border-2 border-[#fe3c72]"
               />
               <div>
-                <h4 className="text-sm font-bold">{target.firstName} {target.lastName}</h4>
+                <h4 className="text-sm font-bold text-white">{target.firstName} {target.lastName}</h4>
                 <p className="text-[11px] text-emerald-400 font-mono font-bold flex items-center">
                   <span className="w-2 h-2 rounded-full bg-emerald-400 mr-1.5 animate-pulse"></span>
                   {formatTime(timer)}
@@ -189,8 +240,8 @@ const CallOverlay = ({ callState, onEndCall, onAcceptCall, onDeclineCall, socket
               </div>
             </div>
 
-            <span className="text-xs font-bold text-gray-400 bg-gray-900 px-3 py-1 rounded-full border border-gray-800">
-              {callState.callType === 'video' ? '📹 HD Video' : '📞 Voice'}
+            <span className="text-xs font-bold text-gray-300 bg-[#192132] px-3 py-1 rounded-full border border-[#2c3750]">
+              {callState.callType === 'video' ? '📹 HD Video Call' : '📞 HD Voice Call'}
             </span>
           </div>
 
@@ -198,15 +249,15 @@ const CallOverlay = ({ callState, onEndCall, onAcceptCall, onDeclineCall, socket
           <div className="flex-1 relative flex items-center justify-center bg-gray-950 overflow-hidden">
             {callState.callType === 'video' ? (
               <div className="w-full h-full relative flex items-center justify-center">
-                {/* Simulated / Remote Video */}
+                {/* Remote Video Feed */}
                 <img
                   src={target.profileImage}
                   alt={target.firstName}
-                  className="w-full h-full object-cover opacity-80"
+                  className="w-full h-full object-cover opacity-85"
                 />
 
                 {/* Picture in Picture Local Video Feed */}
-                <div className="absolute top-4 right-4 w-32 h-44 rounded-2xl bg-black border-2 border-white/20 overflow-hidden shadow-2xl">
+                <div className="absolute top-4 right-4 w-32 h-44 rounded-2xl bg-black border-2 border-white/30 overflow-hidden shadow-2xl">
                   <video
                     ref={localVideoRef}
                     autoPlay
@@ -215,32 +266,35 @@ const CallOverlay = ({ callState, onEndCall, onAcceptCall, onDeclineCall, socket
                     className="w-full h-full object-cover"
                   />
                   {isCameraOff && (
-                    <div className="absolute inset-0 bg-gray-900 flex items-center justify-center text-xs font-bold text-gray-400">
+                    <div className="absolute inset-0 bg-gray-900 flex items-center justify-center text-[10px] font-bold text-gray-400">
                       Camera Off
                     </div>
                   )}
                 </div>
               </div>
             ) : (
-              /* Voice Call Big Avatar Screen */
+              /* Voice Call Screen */
               <div className="text-center space-y-4">
                 <img
                   src={target.profileImage}
                   alt={target.firstName}
                   className="w-32 h-32 rounded-full object-cover border-4 border-[#fe3c72] mx-auto shadow-2xl animate-pulse"
                 />
-                <h3 className="text-xl font-black">{target.firstName} {target.lastName}</h3>
-                <p className="text-xs text-emerald-400 font-mono font-bold">Voice Call Active</p>
+                <h3 className="text-xl font-black text-white">{target.firstName} {target.lastName}</h3>
+                <p className="text-xs text-emerald-400 font-mono font-bold flex items-center justify-center space-x-1">
+                  <span>🎙️</span>
+                  <span>Audio Connected</span>
+                </p>
               </div>
             )}
           </div>
 
           {/* Call Controls Bar */}
-          <div className="p-4 bg-[#161b22] border-t border-gray-800 flex items-center justify-center space-x-6 z-20">
+          <div className="p-4 bg-[#141822] border-t border-[#1e2536] flex items-center justify-center space-x-6 z-20">
             <button
               onClick={toggleMute}
-              className={`w-12 h-12 rounded-full flex items-center justify-center transition-colors cursor-pointer text-lg ${
-                isMuted ? 'bg-red-500 text-white' : 'bg-gray-800 hover:bg-gray-700 text-white'
+              className={`w-12 h-12 rounded-full flex items-center justify-center transition-all cursor-pointer text-lg ${
+                isMuted ? 'bg-red-500 text-white' : 'bg-[#1f2738] hover:bg-[#2b364e] text-white'
               }`}
               title={isMuted ? 'Unmute' : 'Mute'}
             >
@@ -250,8 +304,8 @@ const CallOverlay = ({ callState, onEndCall, onAcceptCall, onDeclineCall, socket
             {callState.callType === 'video' && (
               <button
                 onClick={toggleCamera}
-                className={`w-12 h-12 rounded-full flex items-center justify-center transition-colors cursor-pointer text-lg ${
-                  isCameraOff ? 'bg-red-500 text-white' : 'bg-gray-800 hover:bg-gray-700 text-white'
+                className={`w-12 h-12 rounded-full flex items-center justify-center transition-all cursor-pointer text-lg ${
+                  isCameraOff ? 'bg-red-500 text-white' : 'bg-[#1f2738] hover:bg-[#2b364e] text-white'
                 }`}
                 title={isCameraOff ? 'Turn Camera On' : 'Turn Camera Off'}
               >

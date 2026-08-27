@@ -14,8 +14,12 @@ export const SocketProvider = ({ children }) => {
   // Real-time notification count
   const [unreadNotifications, setUnreadNotifications] = useState(0);
   
-  // Real-time call state
-  const [incomingCall, setIncomingCall] = useState(null);
+  // Global Real-time Calling State
+  const [callState, setCallState] = useState({
+    status: 'idle', // 'idle' | 'calling' | 'incoming' | 'connected'
+    targetUser: null,
+    callType: 'audio' // 'audio' | 'video'
+  });
   
   const socketRef = useRef(null);
 
@@ -67,16 +71,30 @@ export const SocketProvider = ({ children }) => {
       setOnlineUsers(onlineSet);
     });
 
-    newSocket.on('incoming-call', (data) => {
-      setIncomingCall(data);
+    // Call Signaling Events
+    newSocket.on('incoming-call', ({ callerInfo, callType }) => {
+      setCallState({
+        status: 'incoming',
+        targetUser: callerInfo,
+        callType: callType || 'audio'
+      });
+    });
+
+    newSocket.on('call-answered', () => {
+      setCallState(prev => ({ ...prev, status: 'connected' }));
     });
 
     newSocket.on('call-ended', () => {
-      setIncomingCall(null);
+      setCallState({ status: 'idle', targetUser: null, callType: 'audio' });
     });
 
     newSocket.on('call-rejected', () => {
-      setIncomingCall(null);
+      setCallState({ status: 'idle', targetUser: null, callType: 'audio' });
+    });
+
+    newSocket.on('call-user-offline', () => {
+      setCallState({ status: 'idle', targetUser: null, callType: 'audio' });
+      alert('The user is currently offline or unreachable.');
     });
 
     newSocket.on('new-notification', () => {
@@ -88,6 +106,39 @@ export const SocketProvider = ({ children }) => {
       socketRef.current = null;
     };
   }, [isAuthenticated, user?._id]);
+
+  const startCall = (targetUser, callType = 'audio') => {
+    if (!targetUser?._id) return;
+    setCallState({ status: 'calling', targetUser, callType });
+    if (socketRef.current) {
+      socketRef.current.emit('call-offer', {
+        targetUserId: targetUser._id,
+        callerInfo: user,
+        callType
+      });
+    }
+  };
+
+  const acceptCall = () => {
+    if (socketRef.current && callState.targetUser?._id) {
+      socketRef.current.emit('call-answer', { targetUserId: callState.targetUser._id });
+    }
+    setCallState(prev => ({ ...prev, status: 'connected' }));
+  };
+
+  const declineCall = () => {
+    if (socketRef.current && callState.targetUser?._id) {
+      socketRef.current.emit('call-reject', { targetUserId: callState.targetUser._id });
+    }
+    setCallState({ status: 'idle', targetUser: null, callType: 'audio' });
+  };
+
+  const endCall = () => {
+    if (socketRef.current && callState.targetUser?._id) {
+      socketRef.current.emit('call-end', { targetUserId: callState.targetUser._id });
+    }
+    setCallState({ status: 'idle', targetUser: null, callType: 'audio' });
+  };
 
   const sendMessage = (receiverId, message) => {
     if (socketRef.current) {
@@ -114,8 +165,11 @@ export const SocketProvider = ({ children }) => {
       onlineUsers,
       unreadNotifications,
       setUnreadNotifications,
-      incomingCall,
-      setIncomingCall,
+      callState,
+      startCall,
+      acceptCall,
+      declineCall,
+      endCall,
       sendMessage,
       emitTyping,
       checkOnline

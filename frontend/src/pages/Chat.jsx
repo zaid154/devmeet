@@ -6,7 +6,6 @@ import { useAuth } from '../context/AuthContext';
 import { useSocket } from '../context/SocketContext';
 import { useTheme } from '../context/ThemeContext';
 import { BASE_URL } from '../utils/constants';
-import CallOverlay from '../components/CallOverlay';
 
 // Curated GIF Categories & Library
 const GIF_CATEGORIES = [
@@ -151,7 +150,7 @@ const Avatar = ({ src, name, size = 'w-11 h-11', className = '', online }) => {
 
 const Chat = () => {
   const { user } = useAuth();
-  const { socket, onlineUsers, sendMessage: sendSocketMessage, emitTyping } = useSocket();
+  const { socket, onlineUsers, sendMessage: sendSocketMessage, emitTyping, startCall } = useSocket();
   const { isDark } = useTheme();
   const location = useLocation();
   const navigate = useNavigate();
@@ -168,23 +167,11 @@ const Chat = () => {
   const [showGifPicker, setShowGifPicker] = useState(false);
   const [activeGifTab, setActiveGifTab] = useState('trending');
   const [gifSearch, setGifSearch] = useState('');
-  const [activeLightbox, setActiveLightbox] = useState(null);
-  const [isUploadingMedia, setIsUploadingMedia] = useState(false);
-  const [isRecordingVoice, setIsRecordingVoice] = useState(false);
-  const [voiceDuration, setVoiceDuration] = useState(0);
-
-  // Typing state
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingDuration, setRecordingDuration] = useState(0);
   const [isTargetTyping, setIsTargetTyping] = useState(false);
-
-  // Safety menu
+  const [uploadingImage, setUploadingImage] = useState(false);
   const [showSafetyMenu, setShowSafetyMenu] = useState(false);
-
-  // Call state
-  const [callState, setCallState] = useState({
-    status: 'idle',
-    targetUser: null,
-    callType: 'audio'
-  });
 
   const messagesEndRef = useRef(null);
   const mediaRecorderRef = useRef(null);
@@ -199,7 +186,7 @@ const Chat = () => {
     if (activeUser?._id) fetchMessages(activeUser._id);
   }, [activeUser]);
 
-  // Socket listeners
+  // Socket listeners for messages and typing
   useEffect(() => {
     if (!socket) return;
 
@@ -217,27 +204,12 @@ const Chat = () => {
       if (senderId === activeUser?._id) setIsTargetTyping(isTyping);
     };
 
-    const handleIncomingCall = ({ callerInfo, callType }) => {
-      setCallState({ status: 'incoming', targetUser: callerInfo, callType: callType || 'audio' });
-    };
-    const handleCallAnswered = () => setCallState((prev) => ({ ...prev, status: 'connected' }));
-    const handleCallRejected = () => { setCallState({ status: 'idle', targetUser: null, callType: 'audio' }); };
-    const handleCallEnded = () => { setCallState({ status: 'idle', targetUser: null, callType: 'audio' }); };
-
     socket.on('new-message', handleNewMessage);
     socket.on('user-typing', handleUserTyping);
-    socket.on('incoming-call', handleIncomingCall);
-    socket.on('call-answered', handleCallAnswered);
-    socket.on('call-rejected', handleCallRejected);
-    socket.on('call-ended', handleCallEnded);
 
     return () => {
       socket.off('new-message', handleNewMessage);
       socket.off('user-typing', handleUserTyping);
-      socket.off('incoming-call', handleIncomingCall);
-      socket.off('call-answered', handleCallAnswered);
-      socket.off('call-rejected', handleCallRejected);
-      socket.off('call-ended', handleCallEnded);
     };
   }, [socket, activeUser]);
 
@@ -391,25 +363,6 @@ const Chat = () => {
       if (cancel) { mediaRecorderRef.current.stop(); audioChunksRef.current = []; }
       else { mediaRecorderRef.current.stop(); }
     }
-  };
-
-  // Calls
-  const startCall = (callType) => {
-    if (!activeUser?._id) return;
-    setCallState({ status: 'calling', targetUser: activeUser, callType });
-    if (socket) socket.emit('call-offer', { targetUserId: activeUser._id, callerInfo: user, callType });
-  };
-  const handleEndCall = () => {
-    if (socket && callState.targetUser?._id) socket.emit('call-end', { targetUserId: callState.targetUser._id });
-    setCallState({ status: 'idle', targetUser: null, callType: 'audio' });
-  };
-  const handleAcceptCall = () => {
-    setCallState((prev) => ({ ...prev, status: 'connected' }));
-    if (socket && callState.targetUser?._id) socket.emit('call-answer', { targetUserId: callState.targetUser._id });
-  };
-  const handleDeclineCall = () => {
-    if (socket && callState.targetUser?._id) socket.emit('call-reject', { targetUserId: callState.targetUser._id });
-    setCallState({ status: 'idle', targetUser: null, callType: 'audio' });
   };
 
   // Safety
@@ -596,7 +549,7 @@ const Chat = () => {
             {/* Header Actions: Call + Safety */}
             <div className="flex items-center space-x-1.5 sm:space-x-2">
               <button
-                onClick={() => startCall('audio')}
+                onClick={() => startCall(activeUser, 'audio')}
                 className="w-9 h-9 rounded-full flex items-center justify-center transition-colors cursor-pointer hover:opacity-80 shadow-2xs border"
                 style={{ backgroundColor: 'var(--bg-input)', borderColor: 'var(--border-color)', color: 'var(--text-primary)' }}
                 title="Voice Call"
@@ -604,7 +557,7 @@ const Chat = () => {
                 <PhoneIcon className="w-4 h-4" />
               </button>
               <button
-                onClick={() => startCall('video')}
+                onClick={() => startCall(activeUser, 'video')}
                 className="w-9 h-9 rounded-full flex items-center justify-center transition-colors cursor-pointer hover:opacity-80 shadow-2xs border"
                 style={{ backgroundColor: 'var(--bg-input)', borderColor: 'var(--border-color)', color: 'var(--text-primary)' }}
                 title="Video Call"
@@ -971,14 +924,6 @@ const Chat = () => {
         </div>
       )}
 
-      {/* Call Overlay */}
-      <CallOverlay
-        callState={callState}
-        socket={socket}
-        onEndCall={handleEndCall}
-        onAcceptCall={handleAcceptCall}
-        onDeclineCall={handleDeclineCall}
-      />
     </div>
   );
 };

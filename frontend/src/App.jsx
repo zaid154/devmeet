@@ -7,9 +7,10 @@ import Login from './pages/Login';
 import PageLoader from './components/PageLoader';
 import MobileBottomNav from './components/MobileBottomNav';
 import { AuthProvider, useAuth } from './context/AuthContext';
-import { SocketProvider } from './context/SocketContext';
+import { SocketProvider, useSocket } from './context/SocketContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { AdminProvider, useAdmin } from './admin/context/AdminContext';
+import CallOverlay from './components/CallOverlay';
 
 // Dynamic Lazy Route Imports for Ultra-Fast Initial Bundle Load
 const Feed = lazy(() => import('./pages/Feed'));
@@ -56,6 +57,7 @@ const AdminProtectedRoute = ({ children }) => {
 function AppContent() {
   const location = useLocation();
   const { isAuthenticated } = useAuth();
+  const { callState, acceptCall, declineCall, endCall, socket } = useSocket();
   const isAdminRoute = location.pathname.startsWith('/admin');
   const isFullscreenApp = ['/feed', '/app/recs', '/app/explore', '/explore', '/search', '/chat', '/messages'].includes(location.pathname);
 
@@ -122,6 +124,15 @@ function AppContent() {
 
       <Footer />
       <MobileBottomNav />
+
+      {/* Global Real-Time Call Overlay (Voice & Video) */}
+      <CallOverlay
+        callState={callState}
+        socket={socket}
+        onEndCall={endCall}
+        onAcceptCall={acceptCall}
+        onDeclineCall={declineCall}
+      />
     </div>
   );
 }
