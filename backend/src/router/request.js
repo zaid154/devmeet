@@ -228,11 +228,11 @@ router.post('/unmatch/:userId', userAuth, async (req, res) => {
 // Kaam: Received connection request ko Accept (accepted) ya Reject (rejected) karta hai.
 // Kab use hota hai: Requests / Likes screen par Accept/Reject button dabane par.
 // =========================================================================
-router.patch('/request/:id/:status', userAuth, async (req, res) => {
+router.patch(['/request/:id/:status', '/request/review/:status/:id'], userAuth, async (req, res) => {
     try {
         const connectionId = req.params.id;
         const targetStatus = req.params.status;
-        const currentUserId = req.userId;
+        const currentUserId = req.userId || req.user?._id;
 
         const allowedStatuses = ['accepted', 'rejected', 'ignored'];
         if (!allowedStatuses.includes(targetStatus)) {
@@ -328,9 +328,9 @@ router.get(['/view/accepted', '/user/matches'], userAuth, async (req, res) => {
 // Kaam: Dusre users dwara bheje gaye pending likes / requests list karta hai.
 // Kab use hota hai: Likes / Requests tab par notifications dekhne ke liye.
 // =========================================================================
-router.get('/user/request/received', userAuth, async (req, res) => {
+router.get(['/user/request/received', '/view/all', '/view/received'], userAuth, async (req, res) => {
     try {
-        const currentUserId = req.userId;
+        const currentUserId = req.userId || req.user?._id;
 
         const requests = await connectionModel.find({
             toUserId: currentUserId,

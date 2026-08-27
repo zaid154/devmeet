@@ -23,15 +23,23 @@ const Connections = () => {
     setLoading(true);
     setError('');
     try {
-      const [reqRes, matchRes] = await Promise.all([
-        axios.get(`${BASE_URL}/view/all`, { withCredentials: true }),
-        axios.get(`${BASE_URL}/view/accepted`, { withCredentials: true }),
-      ]);
+      let reqRes, matchRes;
+      try {
+        reqRes = await axios.get(`${BASE_URL}/user/request/received`, { withCredentials: true });
+      } catch (e) {
+        reqRes = await axios.get(`${BASE_URL}/view/all`, { withCredentials: true });
+      }
 
-      if (reqRes.data.status) {
+      try {
+        matchRes = await axios.get(`${BASE_URL}/view/accepted`, { withCredentials: true });
+      } catch (e) {
+        matchRes = await axios.get(`${BASE_URL}/user/matches`, { withCredentials: true });
+      }
+
+      if (reqRes?.data?.status) {
         setRequests(reqRes.data.data || []);
       }
-      if (matchRes.data.status) {
+      if (matchRes?.data?.status) {
         setMatches(matchRes.data.data || []);
       }
     } catch (err) {
