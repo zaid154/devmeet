@@ -78,132 +78,143 @@ const io = new Server(server, {
     cors: corsOptions
 })
 
-// Track online users: userId -> socketId
-const onlineUsers = new Map()
+// Track active user sockets: userId -> Set of socketIds
+const activeUserSockets = new Map();
 
 io.on('connection', (socket) => {
-    console.log('Socket connected:', socket.id)
+    console.log('Socket connected:', socket.id);
 
     // User joins with their userId
     socket.on('join', (userId) => {
-        if (!userId) return
-        onlineUsers.set(userId, socket.id)
-        socket.userId = userId
-        // Broadcast online status
-        io.emit('user-online', { userId, isOnline: true })
-        console.log(`User ${userId} joined, online users: ${onlineUsers.size}`)
-    })
+        if (!userId) return;
+        const uid = userId.toString();
+        socket.userId = uid;
+        socket.join(uid); // Join private room for this user
 
-    // New message - relay to receiver
-    socket.on('send-message', (data) => {
-        const { receiverId, message } = data
-        const receiverSocket = onlineUsers.get(receiverId)
-        if (receiverSocket) {
-            io.to(receiverSocket).emit('new-message', message)
+        if (!activeUserSockets.has(uid)) {
+            activeUserSockets.set(uid, new Set());
         }
-    })
+        activeUserSockets.get(uid).add(socket.id);
+
+        // Broadcast online status
+        io.emit('user-online', { userId: uid, isOnline: true });
+        console.log(`User ${uid} joined room, active users: ${activeUserSockets.size}`);
+    });
+
+    // New message - relay to receiver room
+    socket.on('send-message', (data) => {
+        const { receiverId, message } = data;
+        if (receiverId) {
+            io.to(receiverId.toString()).emit('new-message', message);
+        }
+    });
 
     // Typing indicator
     socket.on('typing', (data) => {
-        const { receiverId, senderId, isTyping } = data
-        const receiverSocket = onlineUsers.get(receiverId)
-        if (receiverSocket) {
-            io.to(receiverSocket).emit('user-typing', { senderId, isTyping })
+        const { receiverId, senderId, isTyping } = data;
+        if (receiverId) {
+            io.to(receiverId.toString()).emit('user-typing', { senderId, isTyping });
         }
-    })
+    });
 
     // WebRTC Signaling - Call offer
     socket.on('call-offer', (data) => {
-        const { targetUserId, offer, callerInfo, callType } = data
-        const targetSocket = onlineUsers.get(targetUserId)
-        if (targetSocket) {
-            io.to(targetSocket).emit('incoming-call', {
+        const { targetUserId, offer, callerInfo, callType } = data;
+        const targetId = targetUserId?.toString();
+        if (targetId) {
+            io.to(targetId).emit('incoming-call', {
                 offer,
                 callerInfo,
                 callType,
                 callerId: socket.userId
-            })
-        } else {
-            socket.emit('call-user-offline', { targetUserId })
+            });
         }
-    })
+    });
 
     // WebRTC Signaling - Call answer
     socket.on('call-answer', (data) => {
-        const { targetUserId, answer } = data
-        const targetSocket = onlineUsers.get(targetUserId)
-        if (targetSocket) {
-            io.to(targetSocket).emit('call-answered', { answer })
+        const { targetUserId, answer } = data;
+        const targetId = targetUserId?.toString();
+        if (targetId) {
+            io.to(targetId).emit('call-answered', { answer });
         }
-    })
+    });
 
     // WebRTC Signaling - ICE candidate
     socket.on('ice-candidate', (data) => {
-        const { targetUserId, candidate } = data
-        const targetSocket = onlineUsers.get(targetUserId)
-        if (targetSocket) {
-            io.to(targetSocket).emit('ice-candidate', { candidate })
+        const { targetUserId, candidate } = data;
+        const targetId = targetUserId?.toString();
+        if (targetId) {
+            io.to(targetId).emit('ice-candidate', { candidate });
         }
-    })
+    });
 
     // Call rejected
     socket.on('call-reject', (data) => {
-        const { targetUserId } = data
-        const targetSocket = onlineUsers.get(targetUserId)
-        if (targetSocket) {
-            io.to(targetSocket).emit('call-rejected', { userId: socket.userId })
+        const { targetUserId } = data;
+        const targetId = targetUserId?.toString();
+        if (targetId) {
+            io.to(targetId).emit('call-rejected', { userId: socket.userId });
         }
-    })
+    });
 
     // Call ended
     socket.on('call-end', (data) => {
-        const { targetUserId } = data
-        const targetSocket = onlineUsers.get(targetUserId)
-        if (targetSocket) {
-            io.to(targetSocket).emit('call-ended', { userId: socket.userId })
+        const { targetUserId } = data;
+        const targetId = targetUserId?.toString();
+        if (targetId) {
+            io.to(targetId).emit('call-ended', { userId: socket.userId });
         }
-    })
+    });
 
     // Match notification
     socket.on('new-match', (data) => {
-        const { targetUserId, matchData } = data
-        const targetSocket = onlineUsers.get(targetUserId)
-        if (targetSocket) {
-            io.to(targetSocket).emit('match-notification', matchData)
+        const { targetUserId, matchData } = data;
+        const targetId = targetUserId?.toString();
+        if (targetId) {
+            io.to(targetId).emit('match-notification', matchData);
         }
-    })
+    });
 
     // Notification
     socket.on('send-notification', (data) => {
-        const { targetUserId, notification } = data
-        const targetSocket = onlineUsers.get(targetUserId)
-        if (targetSocket) {
-            io.to(targetSocket).emit('new-notification', notification)
+        const { targetUserId, notification } = data;
+        const targetId = targetUserId?.toString();
+        if (targetId) {
+            io.to(targetId).emit('new-notification', notification);
         }
-    })
+    });
 
-    // Get online status
+    // Check online status of specific users
     socket.on('check-online', (userIds) => {
-        const statuses = {}
-        userIds.forEach(id => {
-            statuses[id] = onlineUsers.has(id)
-        })
-        socket.emit('online-statuses', statuses)
-    })
+        if (!Array.isArray(userIds)) return;
+        const statuses = {};
+        userIds.forEach((id) => {
+            const uid = id ? id.toString() : '';
+            statuses[uid] = activeUserSockets.has(uid) && activeUserSockets.get(uid).size > 0;
+        });
+        socket.emit('online-statuses', statuses);
+    });
 
     // Disconnect
     socket.on('disconnect', () => {
         if (socket.userId) {
-            onlineUsers.delete(socket.userId)
-            io.emit('user-online', { userId: socket.userId, isOnline: false })
-            console.log(`User ${socket.userId} disconnected`)
+            const uid = socket.userId;
+            if (activeUserSockets.has(uid)) {
+                activeUserSockets.get(uid).delete(socket.id);
+                if (activeUserSockets.get(uid).size === 0) {
+                    activeUserSockets.delete(uid);
+                    io.emit('user-online', { userId: uid, isOnline: false });
+                }
+            }
         }
-    })
-})
+        console.log('Socket disconnected:', socket.id);
+    });
+});
 
 // Make io accessible to routes
 app.set('io', io)
-app.set('onlineUsers', onlineUsers)
+app.set('onlineUsers', activeUserSockets)
 
 dbConnect().then(() => {
     console.log("Connection Stablished successfully")
