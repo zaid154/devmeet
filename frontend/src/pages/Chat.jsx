@@ -167,10 +167,10 @@ const Chat = () => {
   const [showGifPicker, setShowGifPicker] = useState(false);
   const [activeGifTab, setActiveGifTab] = useState('trending');
   const [gifSearch, setGifSearch] = useState('');
-  const [isRecording, setIsRecording] = useState(false);
-  const [recordingDuration, setRecordingDuration] = useState(0);
+  const [isUploadingMedia, setIsUploadingMedia] = useState(false);
+  const [isRecordingVoice, setIsRecordingVoice] = useState(false);
+  const [voiceDuration, setVoiceDuration] = useState(0);
   const [isTargetTyping, setIsTargetTyping] = useState(false);
-  const [uploadingImage, setUploadingImage] = useState(false);
   const [showSafetyMenu, setShowSafetyMenu] = useState(false);
   const [activeLightbox, setActiveLightbox] = useState(null);
 
