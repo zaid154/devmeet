@@ -290,9 +290,9 @@ router.patch('/request/:id/:status', userAuth, async (req, res) => {
 // Kaam: User ke sabhi accepted matches aur chat contacts return karta hai.
 // Kab use hota hai: Connections / Chat list screen par matches dikhane ke liye.
 // =========================================================================
-router.get('/view/accepted', userAuth, async (req, res) => {
+router.get(['/view/accepted', '/user/matches'], userAuth, async (req, res) => {
     try {
-        const currentUserId = req.userId;
+        const currentUserId = req.userId || req.user?._id;
 
         const connections = await connectionModel.find({
             $or: [
