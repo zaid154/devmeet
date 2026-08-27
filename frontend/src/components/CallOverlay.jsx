@@ -2,19 +2,30 @@ import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { BASE_URL } from '../utils/constants';
 
-const CallOverlay = ({ callState, onEndCall, onAcceptCall, onDeclineCall }) => {
+const ICE_SERVERS = {
+  iceServers: [
+    { urls: 'stun:stun.l.google.com:19302' },
+    { urls: 'stun:stun1.l.google.com:19302' },
+    { urls: 'stun:stun2.l.google.com:19302' }
+  ]
+};
+
+const CallOverlay = ({ callState, socket, onEndCall, onAcceptCall, onDeclineCall }) => {
   const [timer, setTimer] = useState(0);
   const [isMuted, setIsMuted] = useState(false);
   const [isCameraOff, setIsCameraOff] = useState(false);
-  const [streamError, setStreamError] = useState('');
+  const [hasRemoteAudio, setHasRemoteAudio] = useState(false);
 
   const localVideoRef = useRef(null);
+  const remoteVideoRef = useRef(null);
+  const remoteAudioRef = useRef(null);
   const localStreamRef = useRef(null);
+  const peerConnectionRef = useRef(null);
+
   const audioCtxRef = useRef(null);
   const ringIntervalRef = useRef(null);
   const timerRef = useRef(0);
 
-  // Keep timerRef in sync with timer
   useEffect(() => {
     timerRef.current = timer;
   }, [timer]);
@@ -47,7 +58,7 @@ const CallOverlay = ({ callState, onEndCall, onAcceptCall, onDeclineCall }) => {
             osc.frequency.setValueAtTime(480, now + 0.1);
           }
 
-          gain.gain.setValueAtTime(0.18, now);
+          gain.gain.setValueAtTime(0.2, now);
           gain.gain.exponentialRampToValueAtTime(0.001, now + (mode === 'incoming' ? 1.4 : 0.9));
 
           osc.connect(gain);
@@ -60,7 +71,7 @@ const CallOverlay = ({ callState, onEndCall, onAcceptCall, onDeclineCall }) => {
       playPulse();
       ringIntervalRef.current = setInterval(playPulse, mode === 'incoming' ? 2400 : 2000);
     } catch (e) {
-      console.warn('Audio ringtone context error:', e);
+      console.warn('Ringtone error:', e);
     }
   };
 
@@ -101,42 +112,205 @@ const CallOverlay = ({ callState, onEndCall, onAcceptCall, onDeclineCall }) => {
     };
   }, [callState?.status]);
 
-  // Setup Local Media Stream on call start/answer
+  // WebRTC Peer Connection Setup
   useEffect(() => {
-    if (callState?.status === 'calling' || callState?.status === 'connected') {
-      startMedia();
+    if (!socket || !callState || callState.status === 'idle') {
+      cleanupWebRTC();
+      return;
     }
 
-    return () => {
-      stopMedia();
-    };
-  }, [callState?.status]);
-
-  const startMedia = async () => {
-    try {
-      if (navigator?.mediaDevices?.getUserMedia) {
+    const initWebRTC = async () => {
+      try {
+        // 1. Capture local audio/video media
         const constraints = {
           audio: true,
-          video: callState.callType === 'video'
+          video: callState.callType === 'video' ? { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: 'user' } : false
         };
 
-        const stream = await navigator.mediaDevices.getUserMedia(constraints);
-        localStreamRef.current = stream;
+        let stream;
+        try {
+          stream = await navigator.mediaDevices.getUserMedia(constraints);
+        } catch (mediaErr) {
+          // Fallback to audio-only if video is blocked
+          stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+        }
 
+        localStreamRef.current = stream;
         if (localVideoRef.current && callState.callType === 'video') {
           localVideoRef.current.srcObject = stream;
         }
+
+        // 2. Create RTCPeerConnection
+        const pc = new RTCPeerConnection(ICE_SERVERS);
+        peerConnectionRef.current = pc;
+
+        // Add local tracks to peer connection
+        stream.getTracks().forEach((track) => {
+          pc.addTrack(track, stream);
+        });
+
+        // 3. Handle remote incoming tracks (Audio & Video)
+        pc.ontrack = (event) => {
+          const [remoteStream] = event.streams;
+          if (remoteStream) {
+            setHasRemoteAudio(true);
+            if (remoteAudioRef.current) {
+              remoteAudioRef.current.srcObject = remoteStream;
+              remoteAudioRef.current.play().catch(() => {});
+            }
+            if (remoteVideoRef.current && callState.callType === 'video') {
+              remoteVideoRef.current.srcObject = remoteStream;
+              remoteVideoRef.current.play().catch(() => {});
+            }
+          }
+        };
+
+        // 4. Send ICE candidates
+        pc.onicecandidate = (event) => {
+          if (event.candidate && callState.targetUser?._id) {
+            socket.emit('ice-candidate', {
+              targetUserId: callState.targetUser._id,
+              candidate: event.candidate
+            });
+          }
+        };
+
+        // 5. If caller: Create Offer
+        if (callState.status === 'calling') {
+          const offer = await pc.createOffer();
+          await pc.setLocalDescription(offer);
+          socket.emit('call-offer', {
+            targetUserId: callState.targetUser._id,
+            offer,
+            callerInfo: callState.callerInfo || {},
+            callType: callState.callType
+          });
+        }
+      } catch (err) {
+        console.error('WebRTC initialization error:', err);
+      }
+    };
+
+    if (callState.status === 'calling') {
+      initWebRTC();
+    }
+
+    return () => {
+      // Keep alive if transitioning to connected
+    };
+  }, [callState?.status === 'calling']);
+
+  // Handle Socket Answer and ICE candidate events
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleCallAnswered = async ({ answer }) => {
+      const pc = peerConnectionRef.current;
+      if (pc && answer && pc.signalingState !== 'stable') {
+        try {
+          await pc.setRemoteDescription(new RTCSessionDescription(answer));
+        } catch (e) {
+          console.warn('Set remote description error:', e);
+        }
+      }
+    };
+
+    const handleIceCandidate = async ({ candidate }) => {
+      const pc = peerConnectionRef.current;
+      if (pc && candidate) {
+        try {
+          await pc.addIceCandidate(new RTCIceCandidate(candidate));
+        } catch (e) {
+          console.warn('Add ICE candidate error:', e);
+        }
+      }
+    };
+
+    socket.on('call-answered', handleCallAnswered);
+    socket.on('ice-candidate', handleIceCandidate);
+
+    return () => {
+      socket.off('call-answered', handleCallAnswered);
+      socket.off('ice-candidate', handleIceCandidate);
+    };
+  }, [socket]);
+
+  // Accept call action for Receiver
+  const handleAcceptAndConnect = async () => {
+    onAcceptCall();
+
+    try {
+      const constraints = {
+        audio: true,
+        video: callState.callType === 'video' ? { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: 'user' } : false
+      };
+
+      let stream;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia(constraints);
+      } catch (e) {
+        stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+      }
+
+      localStreamRef.current = stream;
+      if (localVideoRef.current && callState.callType === 'video') {
+        localVideoRef.current.srcObject = stream;
+      }
+
+      const pc = new RTCPeerConnection(ICE_SERVERS);
+      peerConnectionRef.current = pc;
+
+      stream.getTracks().forEach((track) => {
+        pc.addTrack(track, stream);
+      });
+
+      pc.ontrack = (event) => {
+        const [remoteStream] = event.streams;
+        if (remoteStream) {
+          setHasRemoteAudio(true);
+          if (remoteAudioRef.current) {
+            remoteAudioRef.current.srcObject = remoteStream;
+            remoteAudioRef.current.play().catch(() => {});
+          }
+          if (remoteVideoRef.current && callState.callType === 'video') {
+            remoteVideoRef.current.srcObject = remoteStream;
+            remoteVideoRef.current.play().catch(() => {});
+          }
+        }
+      };
+
+      pc.onicecandidate = (event) => {
+        if (event.candidate && callState.targetUser?._id) {
+          socket.emit('ice-candidate', {
+            targetUserId: callState.targetUser._id,
+            candidate: event.candidate
+          });
+        }
+      };
+
+      if (callState.offer) {
+        await pc.setRemoteDescription(new RTCSessionDescription(callState.offer));
+        const answer = await pc.createAnswer();
+        await pc.setLocalDescription(answer);
+
+        socket.emit('call-answer', {
+          targetUserId: callState.targetUser._id,
+          answer
+        });
       }
     } catch (err) {
-      console.warn('Media hardware fallback:', err.message);
-      setStreamError('Audio/Video connected via live secure stream');
+      console.error('Accept WebRTC error:', err);
     }
   };
 
-  const stopMedia = () => {
+  const cleanupWebRTC = () => {
     if (localStreamRef.current) {
-      localStreamRef.current.getTracks().forEach((track) => track.stop());
+      localStreamRef.current.getTracks().forEach((t) => t.stop());
       localStreamRef.current = null;
+    }
+    if (peerConnectionRef.current) {
+      peerConnectionRef.current.close();
+      peerConnectionRef.current = null;
     }
   };
 
@@ -188,19 +362,19 @@ const CallOverlay = ({ callState, onEndCall, onAcceptCall, onDeclineCall }) => {
         },
         { withCredentials: true }
       );
-    } catch (e) {
-      console.warn('Call record log error:', e.message);
-    }
+    } catch (e) {}
   };
 
   const handleEndWithLog = () => {
     const currentDuration = timerRef.current;
     logCallRecord(currentDuration > 0 ? 'completed' : 'missed');
+    cleanupWebRTC();
     onEndCall();
   };
 
   const handleDeclineWithLog = () => {
     logCallRecord('declined');
+    cleanupWebRTC();
     onDeclineCall();
   };
 
@@ -211,6 +385,9 @@ const CallOverlay = ({ callState, onEndCall, onAcceptCall, onDeclineCall }) => {
   return (
     <div className="fixed inset-0 z-9999 flex items-center justify-center bg-black/90 backdrop-blur-md px-4 font-sans text-white select-none animate-in fade-in duration-200">
       
+      {/* Hidden Audio Element for High-Definition Real-Time Remote Voice */}
+      <audio ref={remoteAudioRef} autoPlay playsInline />
+
       {/* 1. INCOMING CALL SCREEN */}
       {callState.status === 'incoming' && (
         <div className="bg-[#141822] border-2 border-[#fe3c72]/70 rounded-3xl p-8 max-w-sm w-full text-center space-y-6 animate-in zoom-in-95 shadow-2xl">
@@ -241,7 +418,7 @@ const CallOverlay = ({ callState, onEndCall, onAcceptCall, onDeclineCall }) => {
               ✕
             </button>
             <button
-              onClick={onAcceptCall}
+              onClick={handleAcceptAndConnect}
               className="w-16 h-16 rounded-full bg-emerald-500 hover:bg-emerald-600 text-white flex items-center justify-center text-2xl shadow-lg transition-transform hover:scale-110 active:scale-95 cursor-pointer animate-bounce"
               title="Accept"
             >
@@ -268,8 +445,6 @@ const CallOverlay = ({ callState, onEndCall, onAcceptCall, onDeclineCall }) => {
               Calling ({callState.callType === 'video' ? 'HD Video' : 'Audio'})...
             </p>
           </div>
-
-          {streamError && <p className="text-[11px] text-gray-400">{streamError}</p>}
 
           <div className="flex justify-center pt-2">
             <button
@@ -309,15 +484,16 @@ const CallOverlay = ({ callState, onEndCall, onAcceptCall, onDeclineCall }) => {
             </span>
           </div>
 
-          {/* Main Video View / Audio Wave */}
+          {/* Main Video View / Voice Wave */}
           <div className="flex-1 relative flex items-center justify-center bg-gray-950 overflow-hidden">
             {callState.callType === 'video' ? (
               <div className="w-full h-full relative flex items-center justify-center">
-                {/* Remote Video Feed */}
-                <img
-                  src={target.profileImage}
-                  alt={target.firstName}
-                  className="w-full h-full object-cover opacity-85"
+                {/* Remote Live Video Stream */}
+                <video
+                  ref={remoteVideoRef}
+                  autoPlay
+                  playsInline
+                  className="w-full h-full object-cover"
                 />
 
                 {/* Picture in Picture Local Video Feed */}
@@ -337,17 +513,22 @@ const CallOverlay = ({ callState, onEndCall, onAcceptCall, onDeclineCall }) => {
                 </div>
               </div>
             ) : (
-              /* Voice Call Screen */
+              /* Voice Call Connected Avatar Screen */
               <div className="text-center space-y-4">
-                <img
-                  src={target.profileImage}
-                  alt={target.firstName}
-                  className="w-32 h-32 rounded-full object-cover border-4 border-[#fe3c72] mx-auto shadow-2xl animate-pulse"
-                />
+                <div className="relative inline-block">
+                  <img
+                    src={target.profileImage}
+                    alt={target.firstName}
+                    className="w-32 h-32 rounded-full object-cover border-4 border-emerald-500 mx-auto shadow-2xl animate-pulse"
+                  />
+                  <span className="absolute bottom-1 right-2 w-6 h-6 rounded-full bg-emerald-500 border-2 border-[#0e121c] flex items-center justify-center text-xs">
+                    🎙️
+                  </span>
+                </div>
                 <h3 className="text-xl font-black text-white">{target.firstName} {target.lastName}</h3>
-                <p className="text-xs text-emerald-400 font-mono font-bold flex items-center justify-center space-x-1">
-                  <span>🎙️</span>
-                  <span>Audio Connected</span>
+                <p className="text-xs text-emerald-400 font-mono font-bold flex items-center justify-center space-x-1.5">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+                  <span>Live HD Audio Connected</span>
                 </p>
               </div>
             )}

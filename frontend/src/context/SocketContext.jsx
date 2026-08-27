@@ -72,11 +72,12 @@ export const SocketProvider = ({ children }) => {
     });
 
     // Call Signaling Events
-    newSocket.on('incoming-call', ({ callerInfo, callType }) => {
+    newSocket.on('incoming-call', ({ callerInfo, callType, offer }) => {
       setCallState({
         status: 'incoming',
         targetUser: callerInfo,
-        callType: callType || 'audio'
+        callType: callType || 'audio',
+        offer
       });
     });
 
