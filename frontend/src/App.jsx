@@ -90,7 +90,7 @@ function AppContent() {
       <main className={`flex-1 flex flex-col ${isFullscreenApp ? 'h-full overflow-hidden' : ''}`}>
         <Routes>
           {/* Public Landing / Marketing */}
-          <Route path="/" element={<Home />} />
+          <Route path="/" element={isAuthenticated ? <Navigate to="/feed" replace /> : <Home />} />
           
           {/* Core Dating Routes (Strict Protected - Login Mandatory) */}
           <Route path="/feed" element={<ProtectedRoute><Feed /></ProtectedRoute>} />

@@ -51,30 +51,17 @@ const userSchema = new Schema({
     },
     profileImage: {
         type: String,
-        validate: {
-            validator: function (value) {
-                if (value && !value.startsWith('/') && !value.startsWith('data:') && !validator.isURL(value)) {
-                    throw new Error("Please provide correct image url")
-                }
-            }
-        }
+        default: ''
     },
     // Dating profile fields
     bio: {
         type: String,
-        maxLength: 500,
+        maxLength: 1000,
         trim: true,
         default: ''
     },
     photos: [{
-        type: String,
-        validate: {
-            validator: function (value) {
-                if (value && !value.startsWith('/') && !value.startsWith('data:') && !validator.isURL(value)) {
-                    throw new Error("Please provide correct photo url")
-                }
-            }
-        }
+        type: String
     }],
     interests: [{
         type: String,

@@ -17,7 +17,7 @@ const Header = () => {
   const { unreadNotifications } = useSocket();
   const location = useLocation();
 
-  if (location.pathname !== '/') {
+  if (isAuthenticated || location.pathname !== '/') {
     return null;
   }
 

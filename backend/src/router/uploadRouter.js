@@ -34,7 +34,7 @@ router.post('/profile-image', userAuth, upload.single('image'), async (req, res)
       });
     }
 
-    const userId = req.user._id;
+    const userId = req.userId || req.user?._id;
     const currentUser = await userModel.findById(userId);
     if (!currentUser) {
       return res.status(404).send({
@@ -43,51 +43,51 @@ router.post('/profile-image', userAuth, upload.single('image'), async (req, res)
       });
     }
 
-    // Extract old Cloudinary public ID if available
-    const oldPublicId = extractPublicIdFromUrl(currentUser.profileImage);
+const fs = require('fs');
+const path = require('path');
 
-    // Atomic Upload & Replace (Uploads new first, deletes old only on success)
-    const result = await replaceCloudinaryAsset(oldPublicId, req.file.buffer, {
-      folder: `${process.env.CLOUDINARY_FOLDER || 'portfolio-cms'}/profiles`,
-      resource_type: 'image',
-      transformation: [{ width: 800, height: 800, crop: 'limit', quality: 'auto', fetch_format: 'auto' }]
-    });
+// Ensure uploads directory exists
+const uploadsDir = path.join(__dirname, '../../uploads');
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+}
+
+    let secure_url;
+    let public_id = `photo_${Date.now()}`;
+
+    try {
+      const oldPublicId = extractPublicIdFromUrl(currentUser.profileImage);
+      const result = await replaceCloudinaryAsset(oldPublicId, req.file.buffer, {
+        folder: `${process.env.CLOUDINARY_FOLDER || 'portfolio-cms'}/profiles`,
+        resource_type: 'image',
+        transformation: [{ width: 800, height: 800, crop: 'limit', quality: 'auto', fetch_format: 'auto' }]
+      });
+      secure_url = result.secure_url;
+      public_id = result.public_id;
+    } catch (cErr) {
+      console.warn("Cloudinary fallback to local static file:", cErr.message);
+      const ext = (req.file.mimetype && req.file.mimetype.split('/')[1]) || 'jpg';
+      const filename = `photo_${Date.now()}_${Math.round(Math.random() * 1e6)}.${ext}`;
+      fs.writeFileSync(path.join(uploadsDir, filename), req.file.buffer);
+      secure_url = `/uploads/${filename}`;
+    }
 
     // Update User in Database
-    currentUser.profileImage = result.secure_url;
+    currentUser.profileImage = secure_url;
     if (!currentUser.photos || currentUser.photos.length === 0) {
-      currentUser.photos = [result.secure_url];
+      currentUser.photos = [secure_url];
     } else {
-      currentUser.photos[0] = result.secure_url;
+      currentUser.photos[0] = secure_url;
     }
     await currentUser.save();
 
-    // Create Media Audit Record
-    const mediaDoc = await mediaModel.create({
-      url: result.url,
-      secure_url: result.secure_url,
-      publicId: result.public_id,
-      resourceType: 'image',
-      format: result.format,
-      width: result.width,
-      height: result.height,
-      bytes: result.bytes,
-      folder: result.folder || 'portfolio-cms/profiles',
-      uploadedBy: userId,
-      entityType: 'profile',
-      entityId: userId.toString(),
-      title: `${currentUser.firstName || 'User'} Profile Picture`,
-      status: 'active'
-    });
-
     res.send({
       success: true,
-      message: "Profile image uploaded to Cloudinary successfully! ☁️",
+      message: "Profile image updated successfully! ☁️",
       data: {
-        profileImage: result.secure_url,
-        publicId: result.public_id,
-        photos: currentUser.photos,
-        media: mediaDoc
+        profileImage: secure_url,
+        publicId: public_id,
+        photos: currentUser.photos
       }
     });
   } catch (error) {
@@ -114,7 +114,7 @@ router.post('/photo', userAuth, upload.single('image'), async (req, res) => {
       });
     }
 
-    const userId = req.user._id;
+    const userId = req.userId || req.user?._id;
     const currentUser = await userModel.findById(userId);
     if (!currentUser) {
       return res.status(404).send({
@@ -130,16 +130,29 @@ router.post('/photo', userAuth, upload.single('image'), async (req, res) => {
       });
     }
 
-    const result = await uploadFromBuffer(req.file.buffer, {
-      folder: `${process.env.CLOUDINARY_FOLDER || 'portfolio-cms'}/gallery`,
-      resource_type: 'image',
-      transformation: [{ width: 1200, height: 1200, crop: 'limit', quality: 'auto', fetch_format: 'auto' }]
-    });
+    let secure_url;
+    let public_id = `gallery_${Date.now()}`;
+
+    try {
+      const result = await uploadFromBuffer(req.file.buffer, {
+        folder: `${process.env.CLOUDINARY_FOLDER || 'portfolio-cms'}/gallery`,
+        resource_type: 'image',
+        transformation: [{ width: 1200, height: 1200, crop: 'limit', quality: 'auto', fetch_format: 'auto' }]
+      });
+      secure_url = result.secure_url;
+      public_id = result.public_id;
+    } catch (cErr) {
+      console.warn("Cloudinary fallback to local static file:", cErr.message);
+      const ext = (req.file.mimetype && req.file.mimetype.split('/')[1]) || 'jpg';
+      const filename = `gallery_${Date.now()}_${Math.round(Math.random() * 1e6)}.${ext}`;
+      fs.writeFileSync(path.join(uploadsDir, filename), req.file.buffer);
+      secure_url = `/uploads/${filename}`;
+    }
 
     currentUser.photos = currentUser.photos || [];
-    currentUser.photos.push(result.secure_url);
+    currentUser.photos.push(secure_url);
     if (!currentUser.profileImage) {
-      currentUser.profileImage = result.secure_url;
+      currentUser.profileImage = secure_url;
     }
     await currentUser.save();
 

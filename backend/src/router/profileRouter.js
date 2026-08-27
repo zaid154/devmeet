@@ -146,9 +146,10 @@ router.patch('/updateProfile', userAuth, async (req, res) => {
             data: updatedUser
         });
     } catch (error) {
+        console.error("updateProfile error:", error.message);
         res.status(500).send({
             status: false,
-            message: error.message
+            message: error.message || "Failed to update profile"
         });
     }
 });

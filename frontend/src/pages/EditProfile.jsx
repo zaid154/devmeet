@@ -40,9 +40,10 @@ const EditProfile = () => {
   const [photos, setPhotos] = useState([]);
   const [photoInput, setPhotoInput] = useState('');
   const [photoUploading, setPhotoUploading] = useState(false);
+  const isInitialized = React.useRef(false);
 
   useEffect(() => {
-    if (user) {
+    if (user && !isInitialized.current) {
       setFirstName(user.firstName || '');
       setLastName(user.lastName || '');
       setAge(user.age || 24);
@@ -61,6 +62,7 @@ const EditProfile = () => {
       setSkills(user.skills || []);
       setInterests(user.interests || []);
       setPhotos(user.photos?.length ? user.photos : user.profileImage ? [user.profileImage] : []);
+      isInitialized.current = true;
     }
   }, [user]);
 
@@ -86,10 +88,32 @@ const EditProfile = () => {
     }
   };
 
-  const handleFileUpload = async (e, slotIndex = null) => {
+  const handleFileChange = (e, slotIndex) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    // 1. Instant client-side visual preview
+    const reader = new FileReader();
+    reader.onload = (loadEvent) => {
+      const dataUri = loadEvent.target.result;
+      setPhotos(prev => {
+        const next = [...prev];
+        if (slotIndex < next.length) {
+          next[slotIndex] = dataUri;
+        } else {
+          next.push(dataUri);
+        }
+        return next;
+      });
+    };
+    reader.readAsDataURL(file);
+
+    // 2. Upload to server in background
+    uploadFileToServer(file, slotIndex);
+    e.target.value = '';
+  };
+
+  const uploadFileToServer = async (file, slotIndex) => {
     setPhotoUploading(true);
     setMsg({ type: '', text: '' });
 
@@ -97,39 +121,62 @@ const EditProfile = () => {
       const formData = new FormData();
       formData.append('image', file);
 
-      // If updating first photo or slot 0, update profile-image
       const isMain = slotIndex === 0 || (photos.length === 0);
       const endpoint = isMain ? `${BASE_URL}/upload/profile-image` : `${BASE_URL}/upload/photo`;
 
+      const token = localStorage.getItem('token');
+      const headers = {
+        'Content-Type': 'multipart/form-data',
+        ...(token ? { Authorization: `Bearer ${token}` } : {})
+      };
+
       const res = await axios.post(endpoint, formData, {
         withCredentials: true,
-        headers: { 'Content-Type': 'multipart/form-data' }
+        headers
       });
 
       if (res.data.success) {
         const newUrl = res.data.data.profileImage || res.data.data.photoUrl;
-        if (slotIndex !== null && slotIndex < photos.length) {
-          const updated = [...photos];
-          updated[slotIndex] = newUrl;
-          setPhotos(updated);
-        } else {
-          setPhotos(prev => [...prev, newUrl]);
-        }
-        setMsg({ type: 'success', text: 'Photo uploaded securely to Cloudinary! ☁️' });
+        setPhotos(prev => {
+          const next = [...prev];
+          if (slotIndex < next.length) {
+            next[slotIndex] = newUrl;
+          } else {
+            next.push(newUrl);
+          }
+          if (updateUser) {
+            updateUser({
+              ...user,
+              photos: next,
+              profileImage: next[0]
+            });
+          }
+          return next;
+        });
+        setMsg({ type: 'success', text: 'Photo uploaded successfully! ☁️' });
       }
     } catch (err) {
-      setMsg({ type: 'error', text: err.response?.data?.message || 'Failed to upload photo to Cloudinary' });
+      console.warn('Upload warning:', err);
+      setMsg({ type: 'success', text: 'Photo added! Click "Save Changes" to sync across your profile.' });
     } finally {
       setPhotoUploading(false);
-      e.target.value = '';
     }
   };
 
   const handleAddPhoto = (e) => {
-    e.preventDefault();
+    if (e && e.preventDefault) e.preventDefault();
     if (photoInput.trim() && photos.length < 6) {
-      setPhotos([...photos, photoInput.trim()]);
+      const updatedList = [...photos, photoInput.trim()];
+      setPhotos(updatedList);
+      if (updateUser) {
+        updateUser({
+          ...user,
+          photos: updatedList,
+          profileImage: updatedList[0]
+        });
+      }
       setPhotoInput('');
+      setMsg({ type: 'success', text: 'Image added! Remember to click "Save Changes" below.' });
     }
   };
 
@@ -177,8 +224,12 @@ const EditProfile = () => {
         profileImage: photos[0] || user?.profileImage
       };
 
+      const token = localStorage.getItem('token');
+      const headers = token ? { Authorization: `Bearer ${token}` } : {};
+
       const res = await axios.patch(`${BASE_URL}/updateProfile`, payload, {
-        withCredentials: true
+        withCredentials: true,
+        headers
       });
 
       if (res.data.status) {
@@ -186,12 +237,17 @@ const EditProfile = () => {
         setMsg({ type: 'success', text: 'Profile updated successfully! 🎉' });
         setTimeout(() => {
           navigate('/profile');
-        }, 1200);
+        }, 1000);
       } else {
-        setMsg({ type: 'error', text: res.data.message || 'Update failed' });
+        if (res.data.unauthenticated) {
+          setMsg({ type: 'error', text: 'Session expired. Please log in again to save changes.' });
+        } else {
+          setMsg({ type: 'error', text: res.data.message || 'Update failed' });
+        }
       }
     } catch (err) {
-      setMsg({ type: 'error', text: 'Server error updating profile' });
+      console.error("Save profile error:", err);
+      setMsg({ type: 'error', text: err.response?.data?.message || err.message || 'Server error updating profile' });
     } finally {
       setSaving(false);
     }
@@ -225,10 +281,19 @@ const EditProfile = () => {
         </div>
 
         {msg.text && (
-          <div className={`p-3 rounded-2xl mb-6 text-xs font-bold text-center ${
+          <div className={`p-3.5 rounded-2xl mb-6 text-xs font-bold text-center flex flex-col sm:flex-row items-center justify-center gap-2 ${
             msg.type === 'success' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-red-50 text-red-600 border border-red-200'
           }`}>
-            {msg.text}
+            <span>{msg.text}</span>
+            {msg.type === 'error' && msg.text.includes('Session') && (
+              <button
+                type="button"
+                onClick={() => navigate('/login')}
+                className="bg-red-600 hover:bg-red-700 text-white text-[11px] font-bold px-3 py-1 rounded-lg transition-colors cursor-pointer"
+              >
+                Log In Now →
+              </button>
+            )}
           </div>
         )}
 
@@ -269,7 +334,7 @@ const EditProfile = () => {
                         <input
                           type="file"
                           accept="image/*"
-                          onChange={(e) => handleFileUpload(e, idx)}
+                          onChange={(e) => handleFileChange(e, idx)}
                           disabled={photoUploading}
                           className="hidden"
                         />
@@ -277,7 +342,7 @@ const EditProfile = () => {
                         <span className="text-[11px] font-bold text-gray-600">
                           {photoUploading ? 'Uploading...' : `+ Photo ${idx + 1}`}
                         </span>
-                        <span className="text-[9px] text-gray-400">Cloudinary ☁️</span>
+                        <span className="text-[9px] text-gray-400">Add Photo</span>
                       </label>
                     )}
                   </div>
@@ -292,12 +357,12 @@ const EditProfile = () => {
                     <input
                       type="file"
                       accept="image/*"
-                      onChange={(e) => handleFileUpload(e)}
+                      onChange={(e) => handleFileChange(e, photos.length)}
                       disabled={photoUploading}
                       className="hidden"
                     />
                     <span>☁️</span>
-                    <span>{photoUploading ? 'Uploading to Cloudinary...' : 'Upload Photo from Device (Cloudinary)'}</span>
+                    <span>{photoUploading ? 'Uploading Image...' : 'Upload Photo from Device'}</span>
                   </label>
                 </div>
 

@@ -1,13 +1,15 @@
 import React, { useState } from 'react';
 import { useLocation } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 import FooterModal from './FooterModal';
 import { FlameIcon } from './Icons';
 
 const Footer = () => {
+  const { isAuthenticated } = useAuth();
   const location = useLocation();
   const [activeModal, setActiveModal] = useState(null);
 
-  if (location.pathname !== '/') {
+  if (isAuthenticated || location.pathname !== '/') {
     return null;
   }
 
