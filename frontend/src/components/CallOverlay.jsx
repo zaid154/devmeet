@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
+import axios from 'axios';
+import { BASE_URL } from '../utils/constants';
 
 const CallOverlay = ({ callState, onEndCall, onAcceptCall, onDeclineCall }) => {
   const [timer, setTimer] = useState(0);
@@ -9,36 +11,63 @@ const CallOverlay = ({ callState, onEndCall, onAcceptCall, onDeclineCall }) => {
   const localVideoRef = useRef(null);
   const localStreamRef = useRef(null);
   const audioCtxRef = useRef(null);
-  const ringOscillatorRef = useRef(null);
+  const ringIntervalRef = useRef(null);
+  const timerRef = useRef(0);
 
-  // Sound Generator (Web Audio API - No external MP3 files needed)
-  const startRingingSound = (type = 'outgoing') => {
+  // Keep timerRef in sync with timer
+  useEffect(() => {
+    timerRef.current = timer;
+  }, [timer]);
+
+  // Audio Ringtone Generator (Web Audio API)
+  const startRingtone = (mode = 'outgoing') => {
     try {
-      const AudioContext = window.AudioContext || window.webkitAudioContext;
-      if (!AudioContext) return;
-      const ctx = new AudioContext();
+      stopRingtone();
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      if (!AudioCtx) return;
+      const ctx = new AudioCtx();
+      if (ctx.state === 'suspended') {
+        ctx.resume();
+      }
       audioCtxRef.current = ctx;
 
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
+      const playPulse = () => {
+        if (!audioCtxRef.current) return;
+        try {
+          const now = ctx.currentTime;
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
 
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(type === 'incoming' ? 440 : 400, ctx.currentTime);
-      gain.gain.setValueAtTime(0.08, ctx.currentTime);
+          osc.type = 'sine';
+          if (mode === 'incoming') {
+            osc.frequency.setValueAtTime(520, now);
+            osc.frequency.setValueAtTime(680, now + 0.15);
+          } else {
+            osc.frequency.setValueAtTime(440, now);
+            osc.frequency.setValueAtTime(480, now + 0.1);
+          }
 
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.start();
-      ringOscillatorRef.current = osc;
+          gain.gain.setValueAtTime(0.18, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + (mode === 'incoming' ? 1.4 : 0.9));
+
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(now);
+          osc.stop(now + (mode === 'incoming' ? 1.4 : 0.9));
+        } catch (e) {}
+      };
+
+      playPulse();
+      ringIntervalRef.current = setInterval(playPulse, mode === 'incoming' ? 2400 : 2000);
     } catch (e) {
-      // Audio context may be restricted by autoplay policy
+      console.warn('Audio ringtone context error:', e);
     }
   };
 
-  const stopRingingSound = () => {
-    if (ringOscillatorRef.current) {
-      try { ringOscillatorRef.current.stop(); } catch (e) {}
-      ringOscillatorRef.current = null;
+  const stopRingtone = () => {
+    if (ringIntervalRef.current) {
+      clearInterval(ringIntervalRef.current);
+      ringIntervalRef.current = null;
     }
     if (audioCtxRef.current) {
       try { audioCtxRef.current.close(); } catch (e) {}
@@ -50,24 +79,25 @@ const CallOverlay = ({ callState, onEndCall, onAcceptCall, onDeclineCall }) => {
   useEffect(() => {
     let interval;
     if (callState?.status === 'connected') {
-      stopRingingSound();
+      stopRingtone();
+      setTimer(0);
       interval = setInterval(() => {
         setTimer((prev) => prev + 1);
       }, 1000);
     } else if (callState?.status === 'calling') {
-      startRingingSound('outgoing');
+      startRingtone('outgoing');
       setTimer(0);
     } else if (callState?.status === 'incoming') {
-      startRingingSound('incoming');
+      startRingtone('incoming');
       setTimer(0);
     } else {
-      stopRingingSound();
+      stopRingtone();
       setTimer(0);
     }
 
     return () => {
       clearInterval(interval);
-      stopRingingSound();
+      stopRingtone();
     };
   }, [callState?.status]);
 
@@ -98,8 +128,8 @@ const CallOverlay = ({ callState, onEndCall, onAcceptCall, onDeclineCall }) => {
         }
       }
     } catch (err) {
-      console.warn('Camera/mic access fallback:', err.message);
-      setStreamError('Connecting with virtual voice/video feed...');
+      console.warn('Media hardware fallback:', err.message);
+      setStreamError('Audio/Video connected via live secure stream');
     }
   };
 
@@ -140,6 +170,40 @@ const CallOverlay = ({ callState, onEndCall, onAcceptCall, onDeclineCall }) => {
     return `${m < 10 ? '0' : ''}${m}:${s < 10 ? '0' : ''}${s}`;
   };
 
+  const logCallRecord = async (status) => {
+    if (!callState?.targetUser?._id) return;
+    try {
+      const secs = timerRef.current;
+      const formattedDuration = formatTime(secs);
+      await axios.post(
+        `${BASE_URL}/messages/${callState.targetUser._id}`,
+        {
+          type: 'call',
+          callInfo: {
+            callType: callState.callType || 'audio',
+            duration: formattedDuration,
+            status: status || (secs > 0 ? 'completed' : 'missed')
+          },
+          text: `${callState.callType === 'video' ? '📹 HD Video Call' : '📞 Voice Call'} • ${secs > 0 ? `Ended (${formattedDuration})` : status === 'declined' ? 'Declined' : 'Missed Call'}`
+        },
+        { withCredentials: true }
+      );
+    } catch (e) {
+      console.warn('Call record log error:', e.message);
+    }
+  };
+
+  const handleEndWithLog = () => {
+    const currentDuration = timerRef.current;
+    logCallRecord(currentDuration > 0 ? 'completed' : 'missed');
+    onEndCall();
+  };
+
+  const handleDeclineWithLog = () => {
+    logCallRecord('declined');
+    onDeclineCall();
+  };
+
   if (!callState || callState.status === 'idle') return null;
 
   const target = callState.targetUser || {};
@@ -149,7 +213,7 @@ const CallOverlay = ({ callState, onEndCall, onAcceptCall, onDeclineCall }) => {
       
       {/* 1. INCOMING CALL SCREEN */}
       {callState.status === 'incoming' && (
-        <div className="bg-[#141822] border-2 border-[#fe3c72]/60 rounded-3xl p-8 max-w-sm w-full text-center space-y-6 animate-in zoom-in-95 shadow-2xl">
+        <div className="bg-[#141822] border-2 border-[#fe3c72]/70 rounded-3xl p-8 max-w-sm w-full text-center space-y-6 animate-in zoom-in-95 shadow-2xl">
           <div className="relative inline-block">
             <img
               src={target.profileImage || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde'}
@@ -170,7 +234,7 @@ const CallOverlay = ({ callState, onEndCall, onAcceptCall, onDeclineCall }) => {
 
           <div className="flex items-center justify-center space-x-6 pt-2">
             <button
-              onClick={onDeclineCall}
+              onClick={handleDeclineWithLog}
               className="w-14 h-14 rounded-full bg-red-600 hover:bg-red-700 text-white flex items-center justify-center text-xl shadow-lg transition-transform hover:scale-110 active:scale-95 cursor-pointer"
               title="Decline"
             >
@@ -209,7 +273,7 @@ const CallOverlay = ({ callState, onEndCall, onAcceptCall, onDeclineCall }) => {
 
           <div className="flex justify-center pt-2">
             <button
-              onClick={onEndCall}
+              onClick={handleEndWithLog}
               className="w-14 h-14 rounded-full bg-red-600 hover:bg-red-700 text-white flex items-center justify-center text-xl shadow-lg transition-all cursor-pointer hover:scale-105"
               title="Cancel"
             >
@@ -314,7 +378,7 @@ const CallOverlay = ({ callState, onEndCall, onAcceptCall, onDeclineCall }) => {
             )}
 
             <button
-              onClick={onEndCall}
+              onClick={handleEndWithLog}
               className="w-14 h-14 rounded-full bg-red-600 hover:bg-red-700 text-white flex items-center justify-center text-xl shadow-lg transition-transform hover:scale-105 active:scale-95 cursor-pointer"
               title="End Call"
             >

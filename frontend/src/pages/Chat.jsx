@@ -693,8 +693,27 @@ const Chat = () => {
                       </div>
                     )}
 
+                    {/* Call Record Item */}
+                    {m.type === 'call' && (
+                      <div className="flex items-center space-x-2.5 py-1 px-1">
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm ${
+                          m.callInfo?.status === 'missed' ? 'bg-red-500/20 text-red-400' : 'bg-emerald-500/20 text-emerald-400'
+                        }`}>
+                          {m.callInfo?.callType === 'video' ? '📹' : '📞'}
+                        </div>
+                        <div>
+                          <p className="text-xs font-bold" style={{ color: 'var(--text-primary)' }}>
+                            {m.callInfo?.callType === 'video' ? 'HD Video Call' : 'Voice Call'}
+                          </p>
+                          <p className="text-[10px] font-semibold" style={{ color: 'var(--text-muted)' }}>
+                            {m.callInfo?.status === 'missed' ? 'Missed Call' : m.callInfo?.status === 'declined' ? 'Declined' : `Call Ended • ${m.callInfo?.duration || m.duration || '0:00'}`}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
                     {/* Text */}
-                    {m.text && m.type !== 'gif' && <p className="text-[13px] font-medium leading-relaxed break-words">{m.text}</p>}
+                    {m.text && m.type !== 'gif' && m.type !== 'call' && <p className="text-[13px] font-medium leading-relaxed break-words">{m.text}</p>}
 
                     {/* Timestamp + Read */}
                     <div className={`flex items-center space-x-1 ${isMine ? 'justify-end' : 'justify-start'}`}>
