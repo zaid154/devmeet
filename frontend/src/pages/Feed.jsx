@@ -432,11 +432,11 @@ const Feed = () => {
               ⚡
             </button>
             <button 
-              onClick={() => navigate('/app/explore')}
+              onClick={() => navigate('/search')}
               className="w-9 h-9 rounded-full bg-[#202533] hover:bg-[#2a3142] text-amber-300 flex items-center justify-center text-sm font-bold shadow-xs cursor-pointer hover:scale-105 transition-transform"
-              title="Explore & Search"
+              title="Search by Username & Name"
             >
-              🧭
+              🔍
             </button>
             <button 
               onClick={() => setSidebarTab('Matches')}

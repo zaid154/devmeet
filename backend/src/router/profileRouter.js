@@ -215,14 +215,33 @@ router.post('/resetFeed', userAuth, async (req, res) => {
 
 
 // =========================================================================
-// 5. SEARCH USERS API (Explore & Search)
-// Kaam: Keywords (Name, Skills, Job, Location) & Sexual Interest ke hisab se profiles filter karta hai.
-// Kab use hota hai: Search page ya Explore filter bar me.
 // =========================================================================
-router.get('/searchUsers', optionalUserAuth, async (req, res) => {
+// 5. SEARCH USERS API (Direct Username, Full Name & Tech Stack Search)
+// Kaam: Direct Username, Name, Skills, Job ya Location search karta hai.
+// =========================================================================
+router.get(['/searchUsers', '/search/users', '/user/search'], optionalUserAuth, async (req, res) => {
     try {
-        const currentUser = req.user;
-        const filter = await buildDiscoveryQuery(currentUser, req.query);
+        const query = req.query.query || req.query.q || req.query.username || '';
+        const currentUserId = req.userId || req.user?._id;
+
+        let filter = { accountStatus: { $ne: 'banned' } };
+
+        if (query.trim()) {
+            const regex = new RegExp(query.trim(), 'i');
+            filter.$or = [
+                { firstName: regex },
+                { lastName: regex },
+                { email: regex },
+                { job: regex },
+                { location: regex },
+                { skills: regex },
+                { interests: regex }
+            ];
+        }
+
+        if (currentUserId) {
+            filter._id = { $ne: currentUserId };
+        }
 
         const results = await userModel.find(filter)
             .select('-password')
@@ -230,6 +249,8 @@ router.get('/searchUsers', optionalUserAuth, async (req, res) => {
 
         res.send({
             status: true,
+            message: "Search results fetched successfully",
+            count: results.length,
             data: results
         });
     } catch (error) {
