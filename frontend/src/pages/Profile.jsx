@@ -78,9 +78,32 @@ const Profile = () => {
   if (profile?.favoriteArtist) score += 10;
 
   return (
-    <div className="min-h-screen bg-[#000000] text-white pt-24 pb-24 px-4 sm:px-6 lg:px-8 font-sans select-none">
-      <div className="max-w-md mx-auto space-y-4">
+    <div className="min-h-screen bg-[#000000] text-white pt-6 pb-28 px-4 sm:px-6 lg:px-8 font-sans select-none">
+      <div className="max-w-md mx-auto space-y-5">
         
+        {/* In-App Clean Header Bar */}
+        <div className="flex items-center justify-between pb-2 border-b border-[#202533]">
+          <button
+            onClick={() => navigate('/feed')}
+            className="flex items-center space-x-1.5 text-xs font-bold text-gray-400 hover:text-white transition-colors cursor-pointer bg-[#141822] hover:bg-[#1f2536] px-3 py-1.5 rounded-full border border-[#252c3d]"
+          >
+            <span>←</span>
+            <span>Feed</span>
+          </button>
+
+          <span className="text-sm font-black text-white tracking-tight flex items-center space-x-1">
+            <span className="text-[#fe3c72]">🔥</span>
+            <span>My Profile</span>
+          </span>
+
+          <button
+            onClick={logout}
+            className="text-xs font-bold text-red-400 hover:text-red-300 bg-red-950/40 hover:bg-red-900/60 px-3 py-1.5 rounded-full border border-red-800/60 transition-colors cursor-pointer"
+          >
+            Log Out
+          </button>
+        </div>
+
         {/* Profile Card Header (Matching Video 0:48) */}
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-3.5">

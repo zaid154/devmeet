@@ -7,17 +7,7 @@ const Footer = () => {
   const location = useLocation();
   const [activeModal, setActiveModal] = useState(null);
 
-  if (
-    location.pathname === '/signup' ||
-    location.pathname === '/app/onboarding' ||
-    location.pathname === '/feed' ||
-    location.pathname === '/app/recs' ||
-    location.pathname === '/app/explore' ||
-    location.pathname === '/explore' ||
-    location.pathname === '/search' ||
-    location.pathname === '/chat' ||
-    location.pathname === '/messages'
-  ) {
+  if (location.pathname !== '/') {
     return null;
   }
 
