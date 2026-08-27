@@ -109,8 +109,13 @@ const Feed = () => {
   const fetchMatchesAndMessages = async () => {
     if (!user) return;
     try {
-      const matchRes = await axios.get(`${BASE_URL}/user/matches`, { withCredentials: true });
-      if (matchRes.data?.status) setMatchesList(matchRes.data.data || []);
+      let matchRes;
+      try {
+        matchRes = await axios.get(`${BASE_URL}/view/accepted`, { withCredentials: true });
+      } catch (err) {
+        matchRes = await axios.get(`${BASE_URL}/user/matches`, { withCredentials: true });
+      }
+      if (matchRes?.data?.status) setMatchesList(matchRes.data.data || []);
       
       const reqRes = await axios.get(`${BASE_URL}/user/request/received`, { withCredentials: true });
       if (reqRes.data?.status) setRequestsList(reqRes.data.data || []);
