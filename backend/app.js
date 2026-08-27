@@ -218,9 +218,13 @@ app.set('onlineUsers', activeUserSockets)
 
 dbConnect().then(() => {
     console.log("Connection Stablished successfully")
-    server.listen(PORT, () => {
-        console.log(`Server is running on ${PORT}`)
+    server.listen(PORT, '0.0.0.0', () => {
+        console.log(`Server is running on 0.0.0.0:${PORT}`)
     })
 }).catch((err) => {
-    console.log("Connection not created")
+    console.log("Connection not created:", err.message)
+    // Start server anyway so Render doesn't kill the process
+    server.listen(PORT, '0.0.0.0', () => {
+        console.log(`Server started on 0.0.0.0:${PORT} (DB connection pending)`)
+    })
 })
