@@ -172,6 +172,7 @@ const Chat = () => {
   const [isTargetTyping, setIsTargetTyping] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [showSafetyMenu, setShowSafetyMenu] = useState(false);
+  const [activeLightbox, setActiveLightbox] = useState(null);
 
   const messagesEndRef = useRef(null);
   const mediaRecorderRef = useRef(null);
