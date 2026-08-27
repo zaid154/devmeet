@@ -56,8 +56,8 @@ const AdminProtectedRoute = ({ children }) => {
 
 function AppContent() {
   const location = useLocation();
-  const { isAuthenticated } = useAuth();
-  const { callState, acceptCall, declineCall, endCall, socket } = useSocket();
+  const { isAuthenticated, user } = useAuth();
+  const { callState, setCallState, acceptCall, declineCall, endCall, socket } = useSocket();
   const isAdminRoute = location.pathname.startsWith('/admin');
   const isFullscreenApp = ['/feed', '/app/recs', '/app/explore', '/explore', '/search', '/chat', '/messages'].includes(location.pathname);
 
@@ -129,6 +129,7 @@ function AppContent() {
       <CallOverlay
         callState={callState}
         socket={socket}
+        callerInfo={user}
         onEndCall={endCall}
         onAcceptCall={acceptCall}
         onDeclineCall={declineCall}

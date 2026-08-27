@@ -18,7 +18,9 @@ export const SocketProvider = ({ children }) => {
   const [callState, setCallState] = useState({
     status: 'idle', // 'idle' | 'calling' | 'incoming' | 'connected'
     targetUser: null,
-    callType: 'audio' // 'audio' | 'video'
+    callType: 'audio', // 'audio' | 'video'
+    offer: null,
+    callerId: null
   });
   
   const socketRef = useRef(null);
@@ -71,30 +73,31 @@ export const SocketProvider = ({ children }) => {
       setOnlineUsers(onlineSet);
     });
 
-    // Call Signaling Events
-    newSocket.on('incoming-call', ({ callerInfo, callType, offer }) => {
+    // Call Signaling Events — only UI state, WebRTC handled by CallOverlay
+    newSocket.on('incoming-call', ({ callerInfo, callType, offer, callerId }) => {
       setCallState({
         status: 'incoming',
         targetUser: callerInfo,
         callType: callType || 'audio',
-        offer
+        offer: offer || null,
+        callerId: callerId || null
       });
     });
 
-    newSocket.on('call-answered', () => {
-      setCallState(prev => ({ ...prev, status: 'connected' }));
+    newSocket.on('call-answered', ({ answer }) => {
+      setCallState(prev => ({ ...prev, status: 'connected', answer }));
     });
 
     newSocket.on('call-ended', () => {
-      setCallState({ status: 'idle', targetUser: null, callType: 'audio' });
+      setCallState({ status: 'idle', targetUser: null, callType: 'audio', offer: null, callerId: null });
     });
 
     newSocket.on('call-rejected', () => {
-      setCallState({ status: 'idle', targetUser: null, callType: 'audio' });
+      setCallState({ status: 'idle', targetUser: null, callType: 'audio', offer: null, callerId: null });
     });
 
     newSocket.on('call-user-offline', () => {
-      setCallState({ status: 'idle', targetUser: null, callType: 'audio' });
+      setCallState({ status: 'idle', targetUser: null, callType: 'audio', offer: null, callerId: null });
       alert('The user is currently offline or unreachable.');
     });
 
@@ -108,22 +111,14 @@ export const SocketProvider = ({ children }) => {
     };
   }, [isAuthenticated, user?._id]);
 
+  // startCall: Only sets UI state. CallOverlay will handle WebRTC offer + socket emit.
   const startCall = (targetUser, callType = 'audio') => {
     if (!targetUser?._id) return;
-    setCallState({ status: 'calling', targetUser, callType });
-    if (socketRef.current) {
-      socketRef.current.emit('call-offer', {
-        targetUserId: targetUser._id,
-        callerInfo: user,
-        callType
-      });
-    }
+    setCallState({ status: 'calling', targetUser, callType, callerInfo: user });
   };
 
+  // acceptCall: Only sets UI state. CallOverlay will handle WebRTC answer + socket emit.
   const acceptCall = () => {
-    if (socketRef.current && callState.targetUser?._id) {
-      socketRef.current.emit('call-answer', { targetUserId: callState.targetUser._id });
-    }
     setCallState(prev => ({ ...prev, status: 'connected' }));
   };
 
@@ -131,14 +126,14 @@ export const SocketProvider = ({ children }) => {
     if (socketRef.current && callState.targetUser?._id) {
       socketRef.current.emit('call-reject', { targetUserId: callState.targetUser._id });
     }
-    setCallState({ status: 'idle', targetUser: null, callType: 'audio' });
+    setCallState({ status: 'idle', targetUser: null, callType: 'audio', offer: null, callerId: null });
   };
 
   const endCall = () => {
     if (socketRef.current && callState.targetUser?._id) {
       socketRef.current.emit('call-end', { targetUserId: callState.targetUser._id });
     }
-    setCallState({ status: 'idle', targetUser: null, callType: 'audio' });
+    setCallState({ status: 'idle', targetUser: null, callType: 'audio', offer: null, callerId: null });
   };
 
   const sendMessage = (receiverId, message) => {
@@ -167,6 +162,7 @@ export const SocketProvider = ({ children }) => {
       unreadNotifications,
       setUnreadNotifications,
       callState,
+      setCallState,
       startCall,
       acceptCall,
       declineCall,
