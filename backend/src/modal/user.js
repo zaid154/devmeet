@@ -211,5 +211,10 @@ userSchema.methods.getToken = async function () {
     return token;
 };
 
+userSchema.index({ email: 1 });
+userSchema.index({ gender: 1, role: 1, accountStatus: 1 });
+userSchema.index({ firstName: 1, lastName: 1 });
+userSchema.index({ skills: 1 });
+userSchema.index({ isOnline: 1 });
 
-module.exports = model('user', userSchema)
+module.exports = model('user', userSchema);

@@ -35,6 +35,9 @@ connectionSchema.pre('save', function (next) {
     }
 })
 
-connectionSchema.index({ fromUserId: 1, toUserId: 1 }, { unique: true })
+connectionSchema.index({ fromUserId: 1, toUserId: 1 }, { unique: true });
+connectionSchema.index({ toUserId: 1, status: 1 });
+connectionSchema.index({ fromUserId: 1, status: 1 });
+connectionSchema.index({ status: 1, updatedAt: -1 });
 
-module.exports = model('connection', connectionSchema)
+module.exports = model('connection', connectionSchema);

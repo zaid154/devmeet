@@ -47,5 +47,7 @@ const messageSchema = new Schema({
 });
 
 messageSchema.index({ senderId: 1, receiverId: 1, createdAt: -1 });
+messageSchema.index({ receiverId: 1, senderId: 1, read: 1 });
+messageSchema.index({ createdAt: -1 });
 
 module.exports = model('message', messageSchema);

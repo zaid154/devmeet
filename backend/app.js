@@ -43,13 +43,16 @@ const corsOptions = {
     credentials: true
 }
 
+const compression = require('compression')
+
+app.use(compression())
 app.use(cors(corsOptions))
 app.use(express.json({ limit: '50mb' }))
 app.use(express.urlencoded({ extended: true, limit: '50mb' }))
 app.use(cookieParser())
 
-// Serve uploaded files
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')))
+// Serve uploaded files with cache headers
+app.use('/uploads', express.static(path.join(__dirname, 'uploads'), { maxAge: '7d', etag: true }))
 
 // Mount routes
 app.use('/', authRouter)
