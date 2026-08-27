@@ -169,8 +169,8 @@ async function seed() {
 
     // Admin account
     let adminUser = await userModel.findOne({ email: "admin@devmeet.com" });
+    const adminHashed = await bcrypt.hash("Admin@123", 10);
     if (!adminUser) {
-      const adminHashed = await bcrypt.hash("Admin@12345", 10);
       adminUser = await userModel.create({
         firstName: "DevMeet",
         lastName: "SuperAdmin",
@@ -189,6 +189,11 @@ async function seed() {
         verificationStatus: "approved",
         accountStatus: "active"
       });
+    } else {
+      adminUser.password = adminHashed;
+      adminUser.role = "super-admin";
+      adminUser.accountStatus = "active";
+      await adminUser.save();
     }
 
     // Default target users who will get the matches & chats:
