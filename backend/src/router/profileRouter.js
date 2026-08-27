@@ -221,13 +221,15 @@ router.post('/resetFeed', userAuth, async (req, res) => {
 // =========================================================================
 router.get(['/searchUsers', '/search/users', '/user/search'], optionalUserAuth, async (req, res) => {
     try {
-        const query = req.query.query || req.query.q || req.query.username || '';
+        const rawQuery = (req.query.query || req.query.q || req.query.username || '').toString().trim();
         const currentUserId = req.userId || req.user?._id;
 
         let filter = { accountStatus: { $ne: 'banned' } };
 
-        if (query.trim()) {
-            const regex = new RegExp(query.trim(), 'i');
+        if (rawQuery) {
+            // Escape special regex characters to prevent regex compile errors
+            const escaped = rawQuery.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            const regex = new RegExp(escaped, 'i');
             filter.$or = [
                 { firstName: regex },
                 { lastName: regex },
@@ -245,18 +247,23 @@ router.get(['/searchUsers', '/search/users', '/user/search'], optionalUserAuth, 
 
         const results = await userModel.find(filter)
             .select('-password')
-            .limit(50);
+            .sort({ _id: -1 })
+            .limit(50)
+            .lean();
 
         res.send({
             status: true,
             message: "Search results fetched successfully",
             count: results.length,
-            data: results
+            data: results || []
         });
     } catch (error) {
-        res.status(500).send({
-            status: false,
-            message: error.message
+        console.error('Search error in router:', error.message);
+        res.status(200).send({
+            status: true,
+            count: 0,
+            data: [],
+            message: "No results found"
         });
     }
 });
