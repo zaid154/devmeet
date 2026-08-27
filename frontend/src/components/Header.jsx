@@ -173,7 +173,7 @@ const Header = () => {
                 const IconComponent = link.icon;
                 return (
                   <Link
-                    key={link.path}
+                    key={link.name}
                     to={link.path}
                     className={`px-3.5 py-1.5 rounded-full transition-all flex items-center space-x-1.5 relative ${
                       isActive
