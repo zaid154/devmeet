@@ -198,7 +198,7 @@ const Footer = () => {
             </a>
 
             <a
-              href="https://portfolio-zeta-drab-97.vercel.app/"
+              href="https://zaid-pro.vercel.app/"
               target="_blank"
               rel="noopener noreferrer"
               className="text-white hover:text-pink-400 font-medium transition-colors flex items-center space-x-1"

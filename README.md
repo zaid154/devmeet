@@ -1,5 +1,10 @@
 # 🔥 DevMeet — Dating & Networking for Developers & Engineers
 
+[![Live Demo](https://img.shields.io/badge/Live_App-devmeet--pro.vercel.app-E11D48?style=for-the-badge&logo=vercel)](https://devmeet-pro.vercel.app/)
+[![Author Portfolio](https://img.shields.io/badge/Portfolio-zaid--pro.vercel.app-000000?style=for-the-badge&logo=vercel)](https://zaid-pro.vercel.app/)
+
+> **Live Application**: [https://devmeet-pro.vercel.app](https://devmeet-pro.vercel.app)
+
 > **It starts with a swipe.™**  
 > DevMeet is a premier full-stack MERN dating, matchmaking, and networking platform built specifically for software engineers, developers, and tech innovators.
 
@@ -9,7 +14,7 @@
 
 * **Developer Name**: Mohd Zaid  
 * **Contact Email**: [zaidm1323@gmail.com](mailto:zaidm1323@gmail.com)  
-* **Portfolio Website**: [portfolio-zeta-drab-97.vercel.app](https://portfolio-zeta-drab-97.vercel.app/)  
+* **Portfolio Website**: [zaid-pro.vercel.app](https://zaid-pro.vercel.app/)  
 * **GitHub Profile**: [github.com/zaid154](https://github.com/zaid154)  
 * **LinkedIn Profile**: [linkedin.com/in/mohd-zaid-794090231/](https://www.linkedin.com/in/mohd-zaid-794090231/)
 

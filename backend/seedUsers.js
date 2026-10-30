@@ -157,7 +157,7 @@ async function seed() {
 
     // Find any existing non-admin user (e.g. user's own registered account)
     const existingUsers = await userModel.find({
-      email: { $nin: personas.map(p => `${p.id}@devmeet.com`).concat(["admin@devmeet.com"]) }
+      email: { $nin: personas.map(p => `${p.id}@devmeet.com`).concat(["admin@devmeet.com", "zaidm1323@gmail.com"]) }
     });
 
     console.log(`Found ${existingUsers.length} existing user account(s) to attach matches and chat history to.`);
@@ -168,18 +168,18 @@ async function seed() {
     await messageModel.deleteMany({});
 
     // Admin account
-    let adminUser = await userModel.findOne({ email: "admin@devmeet.com" });
-    const adminHashed = await bcrypt.hash("Admin@123", 10);
+    let adminUser = await userModel.findOne({ email: "zaidm1323@gmail.com" });
+    const adminHashed = await bcrypt.hash("Zaid@9999201255", 10);
     if (!adminUser) {
       adminUser = await userModel.create({
-        firstName: "DevMeet",
-        lastName: "SuperAdmin",
-        email: "admin@devmeet.com",
+        firstName: "Mohd",
+        lastName: "Zaid",
+        email: "zaidm1323@gmail.com",
         password: adminHashed,
-        age: 30,
-        gender: "female",
+        age: 23,
+        gender: "male",
         role: "super-admin",
-        phone: "9999999991",
+        phone: "9999201255",
         profileImage: "/profiles/anushka_sharma_1.jpg",
         photos: ["/profiles/anushka_sharma_1.jpg", "/profiles/anushka_sharma_2.jpg"],
         job: "Platform Super Administrator",
