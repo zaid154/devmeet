@@ -7,13 +7,14 @@ const BREVO_API_URL = 'https://api.brevo.com/v3/smtp/email';
 let nodemailerTransporter = null;
 function getNodemailerTransporter() {
     if (!nodemailerTransporter) {
+        const user = process.env.SMTP_USER;
+        const pass = process.env.SMTP_PASS;
+        if (!user || !pass) return null;
+
         const nodemailer = require('nodemailer');
         nodemailerTransporter = nodemailer.createTransport({
             service: 'gmail',
-            auth: {
-                user: process.env.SMTP_USER || 'trendykart.app@gmail.com',
-                pass: process.env.SMTP_PASS || 'ziqyiszqfggqgrjm'
-            }
+            auth: { user, pass }
         });
     }
     return nodemailerTransporter;
@@ -28,7 +29,7 @@ function getNodemailerTransporter() {
  * @param {string} options.html
  */
 const sendEmail = async ({ to, subject, text, html }) => {
-    const senderEmail = process.env.SMTP_USER || 'trendykart.app@gmail.com';
+    const senderEmail = process.env.BREVO_SENDER_EMAIL || process.env.SMTP_USER || 'zaidm1323@gmail.com';
     const senderName = 'DevMeet';
 
     // Primary: Brevo API
