@@ -74,7 +74,7 @@ npm install
 ```
 
 ### 3️⃣ Environment Configuration
-Create a `.env` file in the `backend/` directory:
+Create a `.env` file in the `server/` directory:
 ```env
 PORT=3000
 MONGO_URI=mongodb+srv://<username>:<password>@cluster.mongodb.net/devmeet?retryWrites=true&w=majority
@@ -84,7 +84,7 @@ ADMIN_EMAIL=admin@devmeet.com
 ADMIN_PASSWORD=AdminPassword123!
 ```
 
-Create a `.env` file in the `frontend/` directory:
+Create a `.env` file in the `client/` directory:
 ```env
 VITE_API_URL=http://localhost:3000
 ```

@@ -9,13 +9,13 @@
   "private": true,
   "scripts": {
     "postinstall": "npm run install:all",
-    "install:all": "npm install --prefix backend && npm install --prefix frontend",
-    "install:backend": "npm install --prefix backend",
-    "install:frontend": "npm install --prefix frontend",
-    "dev": "concurrently --kill-others-on-fail -n \"BACKEND,FRONTEND\" -c \"bgBlue.bold,bgMagenta.bold\" \"npm run dev --prefix backend\" \"npm run dev --prefix frontend\"",
-    "start": "concurrently --kill-others-on-fail -n \"BACKEND,FRONTEND\" -c \"bgBlue.bold,bgMagenta.bold\" \"npm run start --prefix backend\" \"npm run dev --prefix frontend\"",
-    "seed": "npm run seed --prefix backend",
-    "build": "npm run build --prefix frontend"
+    "install:all": "npm install --prefix server && npm install --prefix client",
+    "install:server": "npm install --prefix server",
+    "install:client": "npm install --prefix client",
+    "dev": "concurrently --kill-others-on-fail -n \"BACKEND,FRONTEND\" -c \"bgBlue.bold,bgMagenta.bold\" \"npm run dev --prefix server\" \"npm run dev --prefix client\"",
+    "start": "concurrently --kill-others-on-fail -n \"BACKEND,FRONTEND\" -c \"bgBlue.bold,bgMagenta.bold\" \"npm run start --prefix server\" \"npm run dev --prefix client\"",
+    "seed": "npm run seed --prefix server",
+    "build": "npm run build --prefix client"
   },
   "devDependencies": {
     "concurrently": "^9.1.2"
