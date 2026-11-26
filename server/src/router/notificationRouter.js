@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const notificationModel = require('../modal/notification');
 const userAuth = require('../utils/userAuth');
+const { isValidObjectId } = require('../utils/securityMiddleware');
 
 
 // =========================================================================
@@ -37,8 +38,13 @@ router.get('/notifications', userAuth, async (req, res) => {
 // =========================================================================
 router.patch('/notifications/:id/read', userAuth, async (req, res) => {
     try {
-        const notification = await notificationModel.findOneAndUpdate(
-            { _id: req.params.id, userId: req.userId },
+        if (!isValidObjectId(req.params.id)) {
+            return res.status(400).send({
+                status: false,
+                message: "Invalid notification ID"
+            });
+        }
+        const notification = await notificationModel.findOneAndUpdate({ _id: req.params.id, userId: req.userId },
             { read: true },
             { new: true }
         );

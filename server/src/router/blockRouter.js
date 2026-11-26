@@ -3,6 +3,7 @@ const router = express.Router();
 const blockModel = require('../modal/block');
 const connectionModel = require('../modal/connection');
 const userAuth = require('../utils/userAuth');
+const { isValidObjectId } = require('../utils/securityMiddleware');
 
 
 // =========================================================================
@@ -14,6 +15,13 @@ router.post('/block/:userId', userAuth, async (req, res) => {
     try {
         const blockerId = req.userId;
         const blockedId = req.params.userId;
+
+        if (!isValidObjectId(blockedId)) {
+            return res.status(400).send({
+                status: false,
+                message: "Invalid user ID"
+            });
+        }
 
         if (blockerId.toString() === blockedId.toString()) {
             return res.status(400).send({
@@ -67,6 +75,12 @@ router.post('/block/:userId', userAuth, async (req, res) => {
 // =========================================================================
 router.delete('/block/:userId', userAuth, async (req, res) => {
     try {
+        if (!isValidObjectId(req.params.userId)) {
+            return res.status(400).send({
+                status: false,
+                message: "Invalid user ID"
+            });
+        }
         const deletedBlock = await blockModel.findOneAndDelete({
             blockerId: req.userId,
             blockedId: req.params.userId

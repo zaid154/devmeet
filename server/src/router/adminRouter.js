@@ -10,6 +10,17 @@ const adminActivityLog = require('../modal/adminActivityLog');
 const announcementModel = require('../modal/announcement');
 const appSettingModel = require('../modal/appSetting');
 const { adminAuth, requireRoles } = require('../utils/adminAuth');
+const { escapeRegex, isValidObjectId, parsePagination } = require('../utils/securityMiddleware');
+
+const FEATURE_KEYS = [
+    'dating', 'superLike', 'doubleDate', 'musicMode', 'astrology',
+    'passport', 'voiceCall', 'videoCall', 'gif', 'voiceNotes', 'verification',
+];
+
+const SETTING_KEYS = [
+    'appName', 'siteName', 'supportEmail', 'maintenanceMode', 'allowSignups',
+    'maxPhotosPerUser', 'minAgeRequirement', 'maxAgeRequirement', 'requirePhoneVerification',
+];
 
 // Helper function to record admin activity logs
 const logAdminAction = async (admin, action, targetType, targetId, details, req) => {
@@ -18,20 +29,19 @@ const logAdminAction = async (admin, action, targetType, targetId, details, req)
             adminId: admin._id,
             adminEmail: admin.email,
             adminRole: admin.role,
-            action: action,
-            targetType: targetType,
-            targetId: targetId,
-            details: details,
-            ipAddress: req?.ip || ''
+            action,
+            targetType,
+            targetId,
+            details,
+            ipAddress: req?.ip || '',
         });
     } catch (error) {
-        console.log("Log error:", error.message);
+        console.log('Log error:', error.message);
     }
 };
 
 // Protect all admin endpoints with adminAuth middleware
 router.use(adminAuth);
-
 
 // ==========================================
 // 1. ADMIN PROFILE
@@ -40,21 +50,20 @@ router.get('/me', async (req, res) => {
     try {
         res.send({
             status: true,
-            data: req.admin
+            data: req.admin,
         });
     } catch (error) {
         res.status(500).send({
             status: false,
-            message: error.message
+            message: error.message,
         });
     }
 });
 
-
 // ==========================================
 // 2. DASHBOARD ANALYTICS & STATS
 // ==========================================
-router.get('/dashboard', async (req, res) => {
+router.get('/dashboard', async (_req, res) => {
     try {
         const totalUsers = await userModel.countDocuments({ role: 'user' });
         const activeUsers = await userModel.countDocuments({ role: 'user', accountStatus: 'active' });
@@ -71,7 +80,7 @@ router.get('/dashboard', async (req, res) => {
         const recentUsers = await userModel.find({ role: 'user' })
             .sort({ createdAt: -1 })
             .limit(6)
-            .select('-password');
+            .select('-password -resetPasswordToken -resetPasswordExpires');
 
         const recentLogs = await adminActivityLog.find()
             .sort({ createdAt: -1 })
@@ -79,7 +88,7 @@ router.get('/dashboard', async (req, res) => {
 
         const genderDistribution = await userModel.aggregate([
             { $match: { role: 'user' } },
-            { $group: { _id: '$gender', count: { $sum: 1 } } }
+            { $group: { _id: '$gender', count: { $sum: 1 } } },
         ]);
 
         res.send({
@@ -95,69 +104,52 @@ router.get('/dashboard', async (req, res) => {
                     totalMessages,
                     totalReports,
                     pendingReports,
-                    pendingVerifications
+                    pendingVerifications,
                 },
                 genderDistribution,
                 recentUsers,
-                recentLogs
-            }
+                recentLogs,
+            },
         });
     } catch (error) {
         res.status(500).send({
             status: false,
-            message: error.message
+            message: error.message,
         });
     }
 });
 
-
 // ==========================================
 // 3. USER MANAGEMENT
 // ==========================================
-
-// Get all users with search, filter & pagination
 router.get('/users', async (req, res) => {
     try {
         const { page = 1, limit = 12, search = '', role = '', status = '', verification = '', gender = '' } = req.query;
 
         const query = {};
-
-        if (search) {
-            const searchRegex = new RegExp(search, 'i');
+        if (typeof search === 'string' && search.trim()) {
+            const searchRegex = new RegExp(escapeRegex(search.trim().slice(0, 80)), 'i');
             query.$or = [
                 { firstName: searchRegex },
                 { lastName: searchRegex },
                 { email: searchRegex },
                 { location: searchRegex },
-                { job: searchRegex }
+                { job: searchRegex },
             ];
         }
 
-        if (role) {
-            query.role = role;
-        }
+        if (typeof role === 'string' && role) query.role = role;
+        if (typeof status === 'string' && status) query.accountStatus = status;
+        if (typeof verification === 'string' && verification) query.verificationStatus = verification;
+        if (typeof gender === 'string' && gender) query.gender = gender;
 
-        if (status) {
-            query.accountStatus = status;
-        }
-
-        if (verification) {
-            query.verificationStatus = verification;
-        }
-
-        if (gender) {
-            query.gender = gender;
-        }
-
-        const pageNumber = Number(page);
-        const limitNumber = Number(limit);
-        const skip = (pageNumber - 1) * limitNumber;
+        const { page: pageNumber, limit: limitNumber, skip } = parsePagination(page, limit, 100);
 
         const users = await userModel.find(query)
             .sort({ createdAt: -1 })
             .skip(skip)
             .limit(limitNumber)
-            .select('-password');
+            .select('-password -resetPasswordToken -resetPasswordExpires');
 
         const totalUsers = await userModel.countDocuments(query);
 
@@ -169,38 +161,40 @@ router.get('/users', async (req, res) => {
                     total: totalUsers,
                     page: pageNumber,
                     limit: limitNumber,
-                    totalPages: Math.ceil(totalUsers / limitNumber)
-                }
-            }
+                    totalPages: Math.ceil(totalUsers / limitNumber),
+                },
+            },
         });
     } catch (error) {
         res.status(500).send({
             status: false,
-            message: error.message
+            message: error.message,
         });
     }
 });
 
-// Get single user full details
 router.get('/users/:id', async (req, res) => {
     try {
         const userId = req.params.id;
+        if (!isValidObjectId(userId)) {
+            return res.status(400).send({ status: false, message: 'Invalid user ID' });
+        }
 
-        const user = await userModel.findById(userId).select('-password');
+        const user = await userModel.findById(userId).select('-password -resetPasswordToken -resetPasswordExpires');
         if (!user) {
             return res.status(404).send({
                 status: false,
-                message: "User not found"
+                message: 'User not found',
             });
         }
 
         const matchesCount = await connectionModel.countDocuments({
             $or: [{ fromUserId: user._id }, { toUserId: user._id }],
-            status: 'accepted'
+            status: 'accepted',
         });
 
         const reportsCount = await reportModel.countDocuments({
-            reportedUserId: user._id
+            reportedUserId: user._id,
         });
 
         res.send({
@@ -209,68 +203,82 @@ router.get('/users/:id', async (req, res) => {
                 user,
                 stats: {
                     matchesCount,
-                    reportsCount
-                }
-            }
+                    reportsCount,
+                },
+            },
         });
     } catch (error) {
         res.status(500).send({
             status: false,
-            message: error.message
+            message: error.message,
         });
     }
 });
 
-// Update user status (active, suspended, banned)
-router.patch('/users/:id/status', async (req, res) => {
+router.patch('/users/:id/status', requireRoles(['super-admin', 'admin']), async (req, res) => {
     try {
         const userId = req.params.id;
-        const { status, reason = '' } = req.body;
+        if (!isValidObjectId(userId)) {
+            return res.status(400).send({ status: false, message: 'Invalid user ID' });
+        }
+
+        const { status, reason = '' } = req.body || {};
+        const allowedStatuses = ['active', 'suspended', 'banned', 'deleted'];
+        if (!allowedStatuses.includes(status)) {
+            return res.status(400).send({ status: false, message: 'Invalid account status' });
+        }
 
         const user = await userModel.findByIdAndUpdate(
             userId,
-            { accountStatus: status },
+            { accountStatus: status, statusReason: String(reason || '') },
             { new: true }
-        ).select('-password');
+        ).select('-password -resetPasswordToken -resetPasswordExpires');
 
         if (!user) {
             return res.status(404).send({
                 status: false,
-                message: "User not found"
+                message: 'User not found',
             });
         }
 
-        await logAdminAction(req.admin, `status_change_to_${status}`, 'user', user._id, reason, req);
+        await logAdminAction(req.admin, `status_change_to_${status}`, 'user', user._id, String(reason || ''), req);
 
         res.send({
             status: true,
             message: `User status changed to ${status}`,
-            data: user
+            data: user,
         });
     } catch (error) {
         res.status(500).send({
             status: false,
-            message: error.message
+            message: error.message,
         });
     }
 });
 
-// Update user role (SuperAdmin only)
 router.patch('/users/:id/role', requireRoles(['super-admin']), async (req, res) => {
     try {
         const userId = req.params.id;
-        const { role } = req.body;
+        if (!isValidObjectId(userId)) {
+            return res.status(400).send({ status: false, message: 'Invalid user ID' });
+        }
+
+        const { role } = req.body || {};
+        const allowedRoles = ['user', 'moderator', 'support', 'admin', 'super-admin'];
+        if (!allowedRoles.includes(role)) {
+            return res.status(400).send({ status: false, message: 'Invalid role' });
+        }
 
         const user = await userModel.findByIdAndUpdate(
             userId,
-            { role: role },
+            { role },
             { new: true }
-        ).select('-password');
+        ).select('-password -resetPasswordToken -resetPasswordExpires');
 
         if (!user) {
             return res.status(404).send({
                 status: false,
-                message: "User not found"
+                message: 'User not found',
             });
         }
 
@@ -279,122 +287,116 @@ router.patch('/users/:id/role', requireRoles(['super-admin']), async (req, res) 
         res.send({
             status: true,
             message: `User role updated to ${role}`,
-            data: user
+            data: user,
         });
     } catch (error) {
         res.status(500).send({
             status: false,
-            message: error.message
+            message: error.message,
         });
     }
 });
 
-// Approve or Reject verification request
-router.patch('/users/:id/verify', async (req, res) => {
+router.patch('/users/:id/verify', requireRoles(['super-admin', 'admin', 'moderator']), async (req, res) => {
     try {
         const userId = req.params.id;
-        const { approved, rejectionReason = '' } = req.body;
-
-        let updateData = {};
-        if (approved) {
-            updateData = {
-                isVerified: true,
-                verificationStatus: 'approved'
-            };
-        } else {
-            updateData = {
-                isVerified: false,
-                verificationStatus: 'rejected',
-                verificationNotes: rejectionReason
-            };
+        if (!isValidObjectId(userId)) {
+            return res.status(400).send({ status: false, message: 'Invalid user ID' });
         }
+
+        const { approved, isVerified, rejectionReason = '' } = req.body || {};
+        const shouldApprove = approved !== undefined ? Boolean(approved) : Boolean(isVerified);
+
+        const updateData = shouldApprove
+            ? { isVerified: true, verificationStatus: 'approved' }
+            : { isVerified: false, verificationStatus: 'rejected', statusReason: String(rejectionReason || '') };
 
         const user = await userModel.findByIdAndUpdate(
             userId,
             updateData,
             { new: true }
-        ).select('-password');
+        ).select('-password -resetPasswordToken -resetPasswordExpires');
 
         if (!user) {
             return res.status(404).send({
                 status: false,
-                message: "User not found"
+                message: 'User not found',
             });
         }
 
-        const actionName = approved ? 'verification_approved' : 'verification_rejected';
-        await logAdminAction(req.admin, actionName, 'user', user._id, rejectionReason, req);
+        const actionName = shouldApprove ? 'verification_approved' : 'verification_rejected';
+        await logAdminAction(req.admin, actionName, 'user', user._id, String(rejectionReason || ''), req);
 
         res.send({
             status: true,
-            message: `Verification ${approved ? 'approved' : 'rejected'} successfully`,
-            data: user
+            message: `Verification ${shouldApprove ? 'approved' : 'rejected'} successfully`,
+            data: user,
         });
     } catch (error) {
         res.status(500).send({
             status: false,
-            message: error.message
+            message: error.message,
         });
     }
 });
 
-// Delete user permanently
 router.delete('/users/:id', requireRoles(['super-admin', 'admin']), async (req, res) => {
     try {
         const userId = req.params.id;
+        if (!isValidObjectId(userId)) {
+            return res.status(400).send({ status: false, message: 'Invalid user ID' });
+        }
+
+        if (userId === req.admin._id.toString()) {
+            return res.status(400).send({ status: false, message: 'Cannot delete your own admin account' });
+        }
 
         const user = await userModel.findByIdAndDelete(userId);
         if (!user) {
             return res.status(404).send({
                 status: false,
-                message: "User not found"
+                message: 'User not found',
             });
         }
 
-        // Clean up connections, messages and reports
         await connectionModel.deleteMany({
-            $or: [{ fromUserId: user._id }, { toUserId: user._id }]
+            $or: [{ fromUserId: user._id }, { toUserId: user._id }],
         });
 
         await messageModel.deleteMany({
-            $or: [{ senderId: user._id }, { receiverId: user._id }]
+            $or: [{ senderId: user._id }, { receiverId: user._id }],
         });
 
         await reportModel.deleteMany({
-            $or: [{ reportedUserId: user._id }, { reporterId: user._id }]
+            $or: [{ reportedUserId: user._id }, { reporterId: user._id }],
         });
 
         await logAdminAction(req.admin, 'delete_user', 'user', user._id, `Deleted user ${user.email}`, req);
 
         res.send({
             status: true,
-            message: "User deleted successfully"
+            message: 'User deleted successfully',
         });
     } catch (error) {
         res.status(500).send({
             status: false,
-            message: error.message
+            message: error.message,
         });
     }
 });
 
-
 // ==========================================
 // 4. REPORTS & MODERATION
 // ==========================================
-
-// Get reports list
 router.get('/reports', async (req, res) => {
     try {
         const { status = '', reason = '', page = 1, limit = 15 } = req.query;
 
         const query = {};
-        if (status) query.status = status;
-        if (reason) query.reason = reason;
+        if (typeof status === 'string' && status) query.status = status;
+        if (typeof reason === 'string' && reason) query.reason = reason;
 
-        const pageNumber = Number(page);
-        const limitNumber = Number(limit);
-        const skip = (pageNumber - 1) * limitNumber;
+        const { page: pageNumber, limit: limitNumber, skip } = parsePagination(page, limit, 100);
 
         const reports = await reportModel.find(query)
             .populate('reporterId', 'firstName lastName email profileImage')
@@ -413,32 +415,39 @@ router.get('/reports', async (req, res) => {
                     total: totalReports,
                     page: pageNumber,
                     limit: limitNumber,
-                    totalPages: Math.ceil(totalReports / limitNumber)
-                }
-            }
+                    totalPages: Math.ceil(totalReports / limitNumber),
+                },
+            },
         });
     } catch (error) {
         res.status(500).send({
             status: false,
-            message: error.message
+            message: error.message,
         });
     }
 });
 
-// Update report resolution
-router.patch('/reports/:id', async (req, res) => {
+router.patch('/reports/:id', requireRoles(['super-admin', 'admin', 'moderator']), async (req, res) => {
     try {
         const reportId = req.params.id;
-        const { status, resolutionNotes = '', actionTaken = 'none' } = req.body;
+        if (!isValidObjectId(reportId)) {
+            return res.status(400).send({ status: false, message: 'Invalid report ID' });
+        }
+
+        const { status, resolutionNotes = '', actionTaken = 'none' } = req.body || {};
+        const allowedStatuses = ['pending', 'reviewed', 'resolved', 'dismissed'];
+        if (!allowedStatuses.includes(status)) {
+            return res.status(400).send({ status: false, message: 'Invalid report status' });
+        }
 
         const report = await reportModel.findByIdAndUpdate(
             reportId,
             {
-                status: status,
-                resolutionNotes: resolutionNotes,
-                actionTaken: actionTaken,
+                status,
+                resolutionNotes: String(resolutionNotes || ''),
+                actionTaken: String(actionTaken || 'none'),
                 resolvedBy: req.admin._id,
-                resolvedAt: new Date()
+                resolvedAt: new Date(),
             },
             { new: true }
         );
@@ -446,25 +455,24 @@ router.patch('/reports/:id', async (req, res) => {
         if (!report) {
             return res.status(404).send({
                 status: false,
-                message: "Report not found"
+                message: 'Report not found',
             });
         }
 
         res.send({
             status: true,
             message: `Report marked as ${status}`,
-            data: report
+            data: report,
         });
     } catch (error) {
         res.status(500).send({
             status: false,
-            message: error.message
+            message: error.message,
         });
     }
 });
 
-// Get pending verifications
-router.get('/verifications', async (req, res) => {
+router.get('/verifications', async (_req, res) => {
     try {
         const users = await userModel.find({ verificationStatus: 'pending' })
             .sort({ createdAt: -1 })
@@ -472,37 +480,36 @@ router.get('/verifications', async (req, res) => {
 
         res.send({
             status: true,
-            data: users
+            data: users,
         });
     } catch (error) {
         res.status(500).send({
             status: false,
-            message: error.message
+            message: error.message,
         });
     }
 });
 
-// Get all photos for photo moderation
-router.get('/moderation/photos', async (req, res) => {
+router.get('/moderation/photos', async (_req, res) => {
     try {
         const users = await userModel.find({
-            photos: { $exists: true, $not: { $size: 0 } }
+            photos: { $exists: true, $not: { $size: 0 } },
         })
-        .select('firstName lastName email profileImage photos accountStatus isVerified')
-        .limit(60)
-        .lean();
+            .select('firstName lastName email profileImage photos accountStatus isVerified')
+            .limit(60)
+            .lean();
 
         const allPhotos = [];
         users.forEach((user) => {
             if (user.photos && Array.isArray(user.photos)) {
                 user.photos.forEach((photoUrl) => {
                     allPhotos.push({
-                        photoUrl: photoUrl,
+                        photoUrl,
                         user: {
                             _id: user._id,
                             name: `${user.firstName} ${user.lastName}`,
-                            email: user.email
-                        }
+                            email: user.email,
+                        },
                     });
                 });
             }
@@ -510,28 +517,28 @@ router.get('/moderation/photos', async (req, res) => {
 
         res.send({
             status: true,
-            data: {
-                photos: allPhotos
-            }
+            data: { photos: allPhotos },
         });
     } catch (error) {
         res.status(500).send({
             status: false,
-            message: error.message
+            message: error.message,
         });
     }
 });
 
-// Delete inappropriate user photo
-router.delete('/moderation/photo', async (req, res) => {
+router.delete('/moderation/photo', requireRoles(['super-admin', 'admin', 'moderator']), async (req, res) => {
     try {
-        const { userId, photoUrl } = req.body;
+        const { userId, photoUrl } = req.body || {};
+        if (!isValidObjectId(userId) || typeof photoUrl !== 'string') {
+            return res.status(400).send({ status: false, message: 'Valid userId and photoUrl are required' });
+        }
 
         const user = await userModel.findById(userId);
         if (!user) {
             return res.status(404).send({
                 status: false,
-                message: "User not found"
+                message: 'User not found',
             });
         }
 
@@ -545,86 +552,87 @@ router.delete('/moderation/photo', async (req, res) => {
 
         res.send({
             status: true,
-            message: "Photo removed successfully",
+            message: 'Photo removed successfully',
             data: {
                 photos: user.photos,
-                profileImage: user.profileImage
-            }
+                profileImage: user.profileImage,
+            },
         });
     } catch (error) {
         res.status(500).send({
             status: false,
-            message: error.message
+            message: error.message,
         });
     }
 });
 
-// Reset abusive user bio
-router.patch('/moderation/bio', async (req, res) => {
+router.patch('/moderation/bio', requireRoles(['super-admin', 'admin', 'moderator']), async (req, res) => {
     try {
-        const { userId, reason = 'Bio removed by admin' } = req.body;
+        const { userId, reason = 'Bio removed by admin' } = req.body || {};
+        if (!isValidObjectId(userId)) {
+            return res.status(400).send({ status: false, message: 'Invalid user ID' });
+        }
 
         const user = await userModel.findByIdAndUpdate(
             userId,
             { bio: '' },
             { new: true }
-        ).select('-password');
+        ).select('-password -resetPasswordToken -resetPasswordExpires');
 
         if (!user) {
             return res.status(404).send({
                 status: false,
-                message: "User not found"
+                message: 'User not found',
             });
         }
 
-        await logAdminAction(req.admin, 'reset_bio_moderation', 'user', user._id, reason, req);
+        await logAdminAction(req.admin, 'reset_bio_moderation', 'user', user._id, String(reason || ''), req);
 
         res.send({
             status: true,
-            message: "Bio reset successfully",
-            data: user
+            message: 'Bio reset successfully',
+            data: user,
         });
     } catch (error) {
         res.status(500).send({
             status: false,
-            message: error.message
+            message: error.message,
         });
     }
 });
-
 
 // ==========================================
 // 5. ANNOUNCEMENTS
 // ==========================================
-
-// Get all announcements
-router.get('/announcements', async (req, res) => {
+router.get('/announcements', async (_req, res) => {
     try {
         const announcements = await announcementModel.find().sort({ createdAt: -1 });
         res.send({
             status: true,
-            data: announcements
+            data: announcements,
         });
     } catch (error) {
         res.status(500).send({
             status: false,
-            message: error.message
+            message: error.message,
         });
     }
 });
 
-// Create new announcement & broadcast
-router.post('/announcements', async (req, res) => {
+router.post('/announcements', requireRoles(['super-admin', 'admin']), async (req, res) => {
     try {
-        const { title, message, type = 'info', expiresAt } = req.body;
+        const { title, message, type = 'info', expiresAt } = req.body || {};
+        if (typeof title !== 'string' || typeof message !== 'string' || !title.trim() || !message.trim()) {
+            return res.status(400).send({ status: false, message: 'Title and message are required' });
+        }
 
         const announcement = await announcementModel.create({
-            title: title,
-            message: message,
-            type: type,
+            title: title.trim(),
+            message: message.trim(),
+            type: ['info', 'warning', 'success', 'danger'].includes(type) ? type : 'info',
             expiresAt: expiresAt ? new Date(expiresAt) : null,
             createdBy: req.admin._id,
-            isActive: true
+            isActive: true,
         });
 
         const io = req.app.get('io');
@@ -632,31 +640,33 @@ router.post('/announcements', async (req, res) => {
             io.emit('new-announcement', announcement);
         }
 
-        await logAdminAction(req.admin, 'create_announcement', 'announcement', announcement._id, title, req);
+        await logAdminAction(req.admin, 'create_announcement', 'announcement', announcement._id, title.trim(), req);
 
         res.send({
             status: true,
-            message: "Announcement created successfully",
-            data: announcement
+            message: 'Announcement created successfully',
+            data: announcement,
         });
     } catch (error) {
         res.status(500).send({
             status: false,
-            message: error.message
+            message: error.message,
         });
     }
 });
 
-// Toggle announcement active status
-router.patch('/announcements/:id/toggle', async (req, res) => {
+router.patch('/announcements/:id/toggle', requireRoles(['super-admin', 'admin']), async (req, res) => {
     try {
         const announcementId = req.params.id;
+        if (!isValidObjectId(announcementId)) {
+            return res.status(400).send({ status: false, message: 'Invalid announcement ID' });
+        }
 
         const announcement = await announcementModel.findById(announcementId);
         if (!announcement) {
             return res.status(404).send({
                 status: false,
-                message: "Announcement not found"
+                message: 'Announcement not found',
             });
         }
 
@@ -666,147 +676,161 @@ router.patch('/announcements/:id/toggle', async (req, res) => {
         res.send({
             status: true,
             message: `Announcement ${announcement.isActive ? 'activated' : 'deactivated'}`,
-            data: announcement
+            data: announcement,
         });
     } catch (error) {
         res.status(500).send({
             status: false,
-            message: error.message
+            message: error.message,
         });
     }
 });
 
-// Delete announcement
-router.delete('/announcements/:id', async (req, res) => {
+router.delete('/announcements/:id', requireRoles(['super-admin', 'admin']), async (req, res) => {
     try {
         const announcementId = req.params.id;
+        if (!isValidObjectId(announcementId)) {
+            return res.status(400).send({ status: false, message: 'Invalid announcement ID' });
+        }
 
         await announcementModel.findByIdAndDelete(announcementId);
 
         res.send({
             status: true,
-            message: "Announcement deleted successfully"
+            message: 'Announcement deleted successfully',
         });
     } catch (error) {
         res.status(500).send({
             status: false,
-            message: error.message
+            message: error.message,
         });
     }
 });
-
 
 // ==========================================
 // 6. FEATURE FLAGS
 // ==========================================
-
-// Get feature flags
-router.get('/features', async (req, res) => {
+router.get('/features', async (_req, res) => {
     try {
         const settings = await appSettingModel.findOne({ key: 'feature_flags' });
         res.send({
             status: true,
-            data: settings?.value || {}
+            data: settings?.value || {},
         });
     } catch (error) {
         res.status(500).send({
             status: false,
-            message: error.message
+            message: error.message,
         });
     }
 });
 
-// Update feature flags
 router.patch('/features', requireRoles(['super-admin', 'admin']), async (req, res) => {
     try {
+        const rawFlags = (req.body && typeof req.body.features === 'object') ? req.body.features : (req.body || {});
+        const safeFlags = {};
+        for (const k of FEATURE_KEYS) {
+            if (Object.prototype.hasOwnProperty.call(rawFlags, k)) {
+                safeFlags[k] = Boolean(rawFlags[k]);
+            }
+        }
+
         const settings = await appSettingModel.findOneAndUpdate(
             { key: 'feature_flags' },
             {
                 key: 'feature_flags',
-                value: req.body,
-                updatedBy: req.admin._id
+                value: safeFlags,
+                updatedBy: req.admin._id,
             },
             { upsert: true, new: true }
         );
 
         res.send({
             status: true,
-            message: "Feature flags updated successfully",
-            data: settings.value
+            message: 'Feature flags updated successfully',
+            data: settings.value,
         });
     } catch (error) {
         res.status(500).send({
             status: false,
-            message: error.message
+            message: error.message,
         });
     }
 });
-
 
 // ==========================================
 // 7. STAFF TEAM MANAGEMENT (SuperAdmin Only)
 // ==========================================
-
-// Get staff team
-router.get('/team', async (req, res) => {
+router.get('/team', async (_req, res) => {
     try {
         const team = await userModel.find({
-            role: { $in: ['admin', 'moderator', 'support', 'super-admin'] }
-        }).select('-password');
+            role: { $in: ['admin', 'moderator', 'support', 'super-admin'] },
+        }).select('-password -resetPasswordToken -resetPasswordExpires');
 
         res.send({
             status: true,
-            data: team
+            data: team,
         });
     } catch (error) {
         res.status(500).send({
             status: false,
-            message: error.message
+            message: error.message,
         });
     }
 });
 
-// Create new staff member
 router.post('/team', requireRoles(['super-admin']), async (req, res) => {
     try {
-        const { firstName, lastName, email, password, role = 'moderator', phone } = req.body;
-
-        const existingUser = await userModel.findOne({ email: email });
-        if (existingUser) {
+        const { firstName, lastName, email, password, role = 'moderator', phone } = req.body || {};
+        if (typeof firstName !== 'string' || typeof email !== 'string' || typeof password !== 'string' || !firstName.trim() || !email.trim() || password.length < 8) {
             return res.status(400).send({
                 status: false,
-                message: "Email is already registered"
+                message: 'Valid name, email, and password (min 8 chars) are required',
             });
         }
 
-        const hashedPassword = await bcrypt.hash(password, 10);
+        const allowedStaffRoles = ['moderator', 'support', 'admin', 'super-admin'];
+        if (!allowedStaffRoles.includes(role)) {
+            return res.status(400).send({ status: false, message: 'Invalid staff role' });
+        }
+
+        const cleanEmail = email.trim().toLowerCase();
+        const existingUser = await userModel.findOne({ email: cleanEmail });
+        if (existingUser) {
+            return res.status(400).send({
+                status: false,
+                message: 'Email is already registered',
+            });
+        }
+
+        const saltRounds = Number(process.env.SALT_ROUND) || 10;
+        const hashedPassword = await bcrypt.hash(password, saltRounds);
 
         const newStaff = await userModel.create({
-            firstName: firstName,
-            lastName: lastName,
-            email: email,
+            firstName: firstName.trim(),
+            lastName: typeof lastName === 'string' ? lastName.trim() : '',
+            email: cleanEmail,
             password: hashedPassword,
-            role: role,
-            phone: phone || '0000000000',
+            role,
+            phone: typeof phone === 'string' && phone.trim() ? phone.trim() : '0000000000',
             accountStatus: 'active',
-            isVerified: true
+            isVerified: true,
         });
 
-        await logAdminAction(req.admin, 'create_staff', 'user', newStaff._id, `Created ${role}: ${email}`, req);
+        await logAdminAction(req.admin, 'create_staff', 'user', newStaff._id, `Created ${role}: ${cleanEmail}`, req);
 
         res.send({
             status: true,
-            message: `Staff member created successfully`,
-            data: newStaff
+            message: 'Staff member created successfully',
+            data: newStaff,
         });
     } catch (error) {
         res.status(500).send({
             status: false,
-            message: error.message
+            message: error.message,
         });
     }
 });
-
 
 // ==========================================
 // 8. ACTIVITY LOGS
@@ -816,11 +840,9 @@ router.get('/activity-logs', async (req, res) => {
         const { page = 1, limit = 20, action = '' } = req.query;
 
         const query = {};
-        if (action) query.action = action;
+        if (typeof action === 'string' && action) query.action = action;
 
-        const pageNumber = Number(page);
-        const limitNumber = Number(limit);
-        const skip = (pageNumber - 1) * limitNumber;
+        const { page: pageNumber, limit: limitNumber, skip } = parsePagination(page, limit, 100);
 
         const logs = await adminActivityLog.find(query)
             .sort({ createdAt: -1 })
@@ -837,23 +859,22 @@ router.get('/activity-logs', async (req, res) => {
                     total: totalLogs,
                     page: pageNumber,
                     limit: limitNumber,
-                    totalPages: Math.ceil(totalLogs / limitNumber)
-                }
-            }
+                    totalPages: Math.ceil(totalLogs / limitNumber),
+                },
+            },
         });
     } catch (error) {
         res.status(500).send({
             status: false,
-            message: error.message
+            message: error.message,
         });
     }
 });
 
-
 // ==========================================
 // 9. PLATFORM SETTINGS
 // ==========================================
-router.get('/settings', async (req, res) => {
+router.get('/settings', async (_req, res) => {
     try {
         const settings = await appSettingModel.findOne({ key: 'platform_settings' });
 
@@ -863,38 +884,46 @@ router.get('/settings', async (req, res) => {
                 siteName: 'DevMeet',
                 maintenanceMode: false,
                 allowSignups: true,
-                maxPhotosPerUser: 6
-            }
+                maxPhotosPerUser: 6,
+            },
         });
     } catch (error) {
         res.status(500).send({
             status: false,
-            message: error.message
+            message: error.message,
         });
     }
 });
 
 router.patch('/settings', requireRoles(['super-admin', 'admin']), async (req, res) => {
     try {
+        const rawSettings = (req.body && typeof req.body.settings === 'object') ? req.body.settings : (req.body || {});
+        const safeSettings = {};
+        for (const k of SETTING_KEYS) {
+            if (Object.prototype.hasOwnProperty.call(rawSettings, k)) {
+                safeSettings[k] = rawSettings[k];
+            }
+        }
+
         const settings = await appSettingModel.findOneAndUpdate(
             { key: 'platform_settings' },
             {
                 key: 'platform_settings',
-                value: req.body,
-                updatedBy: req.admin._id
+                value: safeSettings,
+                updatedBy: req.admin._id,
             },
             { upsert: true, new: true }
         );
 
         res.send({
             status: true,
-            message: "Settings saved successfully",
-            data: settings.value
+            message: 'Settings saved successfully',
+            data: settings.value,
         });
     } catch (error) {
         res.status(500).send({
             status: false,
-            message: error.message
+            message: error.message,
         });
     }
 });

@@ -45,6 +45,9 @@ export const AdminProvider = ({ children }) => {
   const loginAdmin = async (email, password) => {
     const res = await axios.post(`${BASE_URL}/admin/login`, { email, password }, { withCredentials: true });
     if (res.data.status) {
+      if (res.data.token) {
+        localStorage.setItem('adminToken', res.data.token);
+      }
       setAdmin(res.data.data);
       localStorage.setItem('adminUser', JSON.stringify(res.data.data));
       return { success: true };
@@ -60,6 +63,7 @@ export const AdminProvider = ({ children }) => {
     }
     setAdmin(null);
     localStorage.removeItem('adminUser');
+    localStorage.removeItem('adminToken');
     window.location.href = '/admin/login';
   };
 

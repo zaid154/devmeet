@@ -5,50 +5,68 @@ const connectionModel = require('../modal/connection');
 const userModel = require('../modal/user');
 const blockModel = require('../modal/block');
 const notificationModel = require('../modal/notification');
-
+const { isValidObjectId } = require('../utils/securityMiddleware');
 
 // =========================================================================
-// 1. SEND SWIPE / CONNECTION REQUEST API
-// Kaam: Swipe Right (interested / like) ya Swipe Left (ignored / pass) handle karta hai.
-// Mutual Like hone par automatically 'Match' bana deta hai.
-// Kab use hota hai: Feed deck par Right/Left swipe karne par.
+// 1. SEND SWIPE / CONNECTION REQUEST API (Only allows swipe actions, never self-accept)
 // =========================================================================
 router.post('/sendConnection/:toUserId/:status', userAuth, async (req, res) => {
     try {
         const { toUserId, status } = req.params;
         const fromUserId = req.userId;
 
-        if (fromUserId.toString() === toUserId.toString()) {
+        if (!isValidObjectId(toUserId)) {
             return res.status(400).send({
                 status: false,
-                message: "You cannot send a connection request to yourself"
+                message: 'Invalid target user ID',
             });
         }
 
-        // Check if either user has blocked the other
+        const allowedSwipeStatuses = ['intrested', 'super-like', 'ignored'];
+        if (!allowedSwipeStatuses.includes(status)) {
+            return res.status(400).send({
+                status: false,
+                message: 'Invalid swipe status',
+            });
+        }
+
+        if (fromUserId.toString() === toUserId.toString()) {
+            return res.status(400).send({
+                status: false,
+                message: 'You cannot send a connection request to yourself',
+            });
+        }
+
+        const targetExists = await userModel.exists({ _id: toUserId, accountStatus: 'active' });
+        if (!targetExists) {
+            return res.status(404).send({
+                status: false,
+                message: 'Target user not found',
+            });
+        }
+
         const isBlocked = await blockModel.findOne({
             $or: [
                 { blockerId: fromUserId, blockedId: toUserId },
-                { blockerId: toUserId, blockedId: fromUserId }
-            ]
+                { blockerId: toUserId, blockedId: fromUserId },
+            ],
         });
 
         if (isBlocked) {
             return res.status(403).send({
                 status: false,
-                message: "Cannot interact with this profile"
+                message: 'Cannot interact with this profile',
             });
         }
 
         const existingConnection = await connectionModel.findOne({
             $or: [
                 { fromUserId, toUserId },
-                { fromUserId: toUserId, toUserId: fromUserId }
-            ]
+                { fromUserId: toUserId, toUserId: fromUserId },
+            ],
         });
 
         if (existingConnection) {
-            // Check mutual like -> Converts to Accepted Match! 🎉
             const wasInterested = ['intrested', 'super-like', 'pending'].includes(existingConnection.status);
             const otherLikedFirst = existingConnection.fromUserId.toString() === toUserId.toString();
             const currentLikes = ['intrested', 'super-like'].includes(status);
@@ -57,40 +75,47 @@ router.post('/sendConnection/:toUserId/:status', userAuth, async (req, res) => {
                 existingConnection.status = 'accepted';
                 await existingConnection.save();
 
-                // Send Match Push Notification
                 try {
                     const fromUser = await userModel.findById(fromUserId).select('firstName lastName');
                     await notificationModel.create({
                         userId: toUserId,
                         type: 'match',
-                        fromUserId: fromUserId,
+                        fromUserId,
                         title: "It's a Match! 🎉",
-                        body: `You and ${fromUser?.firstName || 'someone'} liked each other!`
+                        body: `You and ${fromUser?.firstName || 'someone'} liked each other!`,
                     });
-                } catch (e) {}
+                } catch (_e) {}
 
                 return res.send({
                     status: true,
                     isMatch: true,
                     message: "It's a Match! 🎉 You can now start chatting.",
-                    data: existingConnection
+                    data: existingConnection,
                 });
             }
 
-            existingConnection.status = status;
-            await existingConnection.save();
+            if (existingConnection.status === 'accepted') {
+                return res.status(400).send({
+                    status: false,
+                    message: 'Already matched with this user',
+                });
+            }
+
+            if (existingConnection.fromUserId.toString() === fromUserId.toString()) {
+                existingConnection.status = status;
+                await existingConnection.save();
+            }
 
             return res.send({
                 status: true,
-                message: `Connection status updated to ${status}`
+                message: `Connection status updated to ${status}`,
             });
         }
 
-        // First time interaction
         const newConnection = new connectionModel({
             fromUserId,
             toUserId,
-            status
+            status,
         });
         await newConnection.save();
 
@@ -100,49 +125,66 @@ router.post('/sendConnection/:toUserId/:status', userAuth, async (req, res) => {
                 await notificationModel.create({
                     userId: toUserId,
                     type: status === 'super-like' ? 'super-like' : 'like',
-                    fromUserId: fromUserId,
+                    fromUserId,
                     title: status === 'super-like' ? '⭐ New Super Like!' : '💖 New Like!',
-                    body: `${sender?.firstName || 'Someone'} liked your profile`
+                    body: `${sender?.firstName || 'Someone'} liked your profile`,
                 });
-            } catch (e) {}
+            } catch (_e) {}
         }
 
         res.send({
             status: true,
             message: `Request sent successfully (${status})`,
-            data: newConnection
+            data: newConnection,
         });
     } catch (error) {
         res.status(500).send({
             status: false,
-            message: error.message
+            message: error.message,
         });
     }
 });
 
-
 // =========================================================================
 // 2. SUPER LIKE API
-// Kaam: User ko direct Super Like send karta hai with priority notification.
-// Kab use hota hai: Feed me Star / Super Like button press karne par.
 // =========================================================================
 router.post('/super-like/:toUserId', userAuth, async (req, res) => {
     try {
         const { toUserId } = req.params;
         const fromUserId = req.userId;
 
+        if (!isValidObjectId(toUserId)) {
+            return res.status(400).send({
+                status: false,
+                message: 'Invalid target user ID',
+            });
+        }
+
         if (fromUserId.toString() === toUserId.toString()) {
             return res.status(400).send({
                 status: false,
-                message: "You cannot super-like yourself"
+                message: 'You cannot super-like yourself',
+            });
+        }
+
+        const isBlocked = await blockModel.findOne({
+            $or: [
+                { blockerId: fromUserId, blockedId: toUserId },
+                { blockerId: toUserId, blockedId: fromUserId },
+            ],
+        });
+        if (isBlocked) {
+            return res.status(403).send({
+                status: false,
+                message: 'Cannot interact with this profile',
             });
         }
 
         const existing = await connectionModel.findOne({
             $or: [
                 { fromUserId, toUserId },
-                { fromUserId: toUserId, toUserId: fromUserId }
-            ]
+                { fromUserId: toUserId, toUserId: fromUserId },
+            ],
         });
 
         if (existing) {
@@ -154,18 +196,20 @@ router.post('/super-like/:toUserId', userAuth, async (req, res) => {
                     status: true,
                     isMatch: true,
                     message: "It's a Match with Super Like! ⭐🎉",
-                    data: existing
+                    data: existing,
                 });
             }
-            existing.status = 'super-like';
-            await existing.save();
-            return res.send({ status: true, message: "Super Liked!", data: existing });
+            if (existing.fromUserId.toString() === fromUserId.toString() && existing.status !== 'accepted') {
+                existing.status = 'super-like';
+                await existing.save();
+            }
+            return res.send({ status: true, message: 'Super Liked!', data: existing });
         }
 
         const newConn = await connectionModel.create({
             fromUserId,
             toUserId,
-            status: 'super-like'
+            status: 'super-like',
         });
 
         try {
@@ -173,60 +217,61 @@ router.post('/super-like/:toUserId', userAuth, async (req, res) => {
             await notificationModel.create({
                 userId: toUserId,
                 type: 'super-like',
-                fromUserId: fromUserId,
+                fromUserId,
                 title: '⭐ Someone Super Liked You!',
-                body: `${sender?.firstName || 'A developer'} sent you a Super Like!`
+                body: `${sender?.firstName || 'A developer'} sent you a Super Like!`,
             });
-        } catch (e) {}
+        } catch (_e) {}
 
         res.send({
             status: true,
-            message: "Super Like sent successfully! ⭐",
-            data: newConn
+            message: 'Super Like sent successfully! ⭐',
+            data: newConn,
         });
     } catch (error) {
         res.status(500).send({
             status: false,
-            message: error.message
+            message: error.message,
         });
     }
 });
 
-
 // =========================================================================
 // 3. UNMATCH API
-// Kaam: Match tod deta hai aur dono users ke beech connection delete karta hai.
-// Kab use hota hai: Chat settings me 'Unmatch' click karne par.
 // =========================================================================
 router.post('/unmatch/:userId', userAuth, async (req, res) => {
     try {
         const targetUserId = req.params.userId;
         const currentUserId = req.userId;
 
+        if (!isValidObjectId(targetUserId)) {
+            return res.status(400).send({
+                status: false,
+                message: 'Invalid user ID',
+            });
+        }
+
         await connectionModel.deleteMany({
             $or: [
                 { fromUserId: currentUserId, toUserId: targetUserId },
-                { fromUserId: targetUserId, toUserId: currentUserId }
-            ]
+                { fromUserId: targetUserId, toUserId: currentUserId },
+            ],
         });
 
         res.send({
             status: true,
-            message: "Unmatched successfully"
+            message: 'Unmatched successfully',
         });
     } catch (error) {
         res.status(500).send({
             status: false,
-            message: error.message
+            message: error.message,
         });
     }
 });
 
-
 // =========================================================================
 // 4. ACCEPT / REJECT RECEIVED REQUEST API
-// Kaam: Received connection request ko Accept (accepted) ya Reject (rejected) karta hai.
-// Kab use hota hai: Requests / Likes screen par Accept/Reject button dabane par.
 // =========================================================================
 router.patch(['/request/:id/:status', '/request/review/:status/:id'], userAuth, async (req, res) => {
     try {
@@ -234,24 +279,31 @@ router.patch(['/request/:id/:status', '/request/review/:status/:id'], userAuth, 
         const targetStatus = req.params.status;
         const currentUserId = req.userId || req.user?._id;
 
+        if (!isValidObjectId(connectionId)) {
+            return res.status(400).send({
+                status: false,
+                message: 'Invalid request ID',
+            });
+        }
+
         const allowedStatuses = ['accepted', 'rejected', 'ignored'];
         if (!allowedStatuses.includes(targetStatus)) {
             return res.status(400).send({
                 status: false,
-                message: "Invalid status"
+                message: 'Invalid status',
             });
         }
 
         const connection = await connectionModel.findOne({
             _id: connectionId,
             toUserId: currentUserId,
-            status: { $in: ['intrested', 'super-like', 'pending'] }
+            status: { $in: ['intrested', 'super-like', 'pending'] },
         });
 
         if (!connection) {
             return res.status(404).send({
                 status: false,
-                message: "Connection request not found or already processed"
+                message: 'Connection request not found or already processed',
             });
         }
 
@@ -266,29 +318,26 @@ router.patch(['/request/:id/:status', '/request/review/:status/:id'], userAuth, 
                     type: 'match',
                     fromUserId: currentUserId,
                     title: "It's a Match! 🎉",
-                    body: `${currentUser?.firstName || 'Someone'} accepted your connection request!`
+                    body: `${currentUser?.firstName || 'Someone'} accepted your connection request!`,
                 });
-            } catch (e) {}
+            } catch (_e) {}
         }
 
         res.send({
             status: true,
             message: `Request has been ${targetStatus}`,
-            data: connection
+            data: connection,
         });
     } catch (error) {
         res.status(500).send({
             status: false,
-            message: error.message
+            message: error.message,
         });
     }
 });
 
-
 // =========================================================================
 // 5. GET ALL ACCEPTED MATCHES (Connections)
-// Kaam: User ke sabhi accepted matches aur chat contacts return karta hai.
-// Kab use hota hai: Connections / Chat list screen par matches dikhane ke liye.
 // =========================================================================
 router.get(['/view/accepted', '/user/matches'], userAuth, async (req, res) => {
     try {
@@ -297,36 +346,34 @@ router.get(['/view/accepted', '/user/matches'], userAuth, async (req, res) => {
         const connections = await connectionModel.find({
             $or: [
                 { fromUserId: currentUserId, status: 'accepted' },
-                { toUserId: currentUserId, status: 'accepted' }
-            ]
+                { toUserId: currentUserId, status: 'accepted' },
+            ],
         })
-        .populate('fromUserId', 'firstName lastName profileImage photos job location age isVerified accountStatus')
-        .populate('toUserId', 'firstName lastName profileImage photos job location age isVerified accountStatus')
-        .sort({ updatedAt: -1 });
+            .populate('fromUserId', 'firstName lastName profileImage photos job location age isVerified accountStatus')
+            .populate('toUserId', 'firstName lastName profileImage photos job location age isVerified accountStatus')
+            .sort({ updatedAt: -1 });
 
-        const matches = connections.map(conn => {
+        const matches = connections.map((conn) => {
+            if (!conn.fromUserId || !conn.toUserId) return null;
             const isSender = conn.fromUserId._id.toString() === currentUserId.toString();
             return isSender ? conn.toUserId : conn.fromUserId;
         }).filter(Boolean);
 
         res.send({
             status: true,
-            message: "Accepted matches fetched successfully",
-            data: matches
+            message: 'Accepted matches fetched successfully',
+            data: matches,
         });
     } catch (error) {
         res.status(500).send({
             status: false,
-            message: error.message
+            message: error.message,
         });
     }
 });
 
-
 // =========================================================================
 // 6. GET RECEIVED CONNECTION REQUESTS
-// Kaam: Dusre users dwara bheje gaye pending likes / requests list karta hai.
-// Kab use hota hai: Likes / Requests tab par notifications dekhne ke liye.
 // =========================================================================
 router.get(['/user/request/received', '/view/all', '/view/received'], userAuth, async (req, res) => {
     try {
@@ -334,20 +381,20 @@ router.get(['/user/request/received', '/view/all', '/view/received'], userAuth, 
 
         const requests = await connectionModel.find({
             toUserId: currentUserId,
-            status: { $in: ['intrested', 'super-like', 'pending'] }
+            status: { $in: ['intrested', 'super-like', 'pending'] },
         })
-        .populate('fromUserId', 'firstName lastName profileImage photos job location age isVerified bio skills interests')
-        .sort({ createdAt: -1 });
+            .populate('fromUserId', 'firstName lastName profileImage photos job location age isVerified bio skills interests')
+            .sort({ createdAt: -1 });
 
         res.send({
             status: true,
-            message: "Received requests fetched successfully",
-            data: requests
+            message: 'Received requests fetched successfully',
+            data: requests,
         });
     } catch (error) {
         res.status(500).send({
             status: false,
-            message: error.message
+            message: error.message,
         });
     }
 });

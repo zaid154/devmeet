@@ -179,6 +179,9 @@ const Onboarding = () => {
       }, { withCredentials: true });
 
       if (res.data.status) {
+        if (res.data.token) {
+          localStorage.setItem('token', res.data.token);
+        }
         if (res.data.data) {
           login(res.data.data);
         }

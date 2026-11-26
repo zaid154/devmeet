@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
-const multer = require('multer');
+const fs = require('fs');
+const path = require('path');
 
 const userAuth = require('../utils/userAuth');
 const userModel = require('../modal/user');
@@ -9,28 +10,39 @@ const {
   uploadFromBuffer,
   deleteFromCloudinary,
   replaceCloudinaryAsset,
-  extractPublicIdFromUrl
+  extractPublicIdFromUrl,
 } = require('../utils/cloudinaryService');
+const {
+  IMAGE_MIME_TO_EXT,
+  CHAT_MEDIA_MIME_TO_EXT,
+  createSafeUploader,
+  validateUploadedFile,
+} = require('../utils/uploadValidation');
 
-// Multer memory storage (Streams directly to Cloudinary without saving files on server disk)
-const upload = multer({
-  storage: multer.memoryStorage(),
-  limits: { fileSize: 10 * 1024 * 1024 } // 10MB limit
-});
+const imageUpload = createSafeUploader(IMAGE_MIME_TO_EXT, 10 * 1024 * 1024);
+const chatUpload = createSafeUploader(CHAT_MEDIA_MIME_TO_EXT, 10 * 1024 * 1024);
 
+const uploadsDir = path.join(__dirname, '../../uploads');
+function saveFallbackFile(prefix, ext, buffer) {
+  if (!fs.existsSync(uploadsDir)) {
+    fs.mkdirSync(uploadsDir, { recursive: true });
+  }
+  const safeExt = ['jpg', 'png', 'webp', 'gif'].includes(ext) ? ext : 'jpg';
+  const filename = `${prefix}_${Date.now()}_${Math.round(Math.random() * 1e6)}.${safeExt}`;
+  fs.writeFileSync(path.join(uploadsDir, filename), buffer);
+  return `/uploads/${filename}`;
+}
 
 // =========================================================================
-// 1. UPLOAD / REPLACE MAIN PROFILE IMAGE (Cloudinary)
-// Kaam: User ki main profile picture Cloudinary par upload karta hai.
-// Purani profile picture ko Cloudinary se safely destroy karta hai.
-// Kab use hota hai: Edit Profile page par main photo upload karne par.
+// 1. UPLOAD / REPLACE MAIN PROFILE IMAGE
 // =========================================================================
-router.post('/profile-image', userAuth, upload.single('image'), async (req, res) => {
+router.post('/profile-image', userAuth, imageUpload.single('image'), async (req, res) => {
   try {
-    if (!req.file) {
+    const check = validateUploadedFile(req.file, IMAGE_MIME_TO_EXT);
+    if (!check.ok) {
       return res.status(400).send({
         success: false,
-        message: "Please select an image file to upload"
+        message: check.message,
       });
     }
 
@@ -39,18 +51,9 @@ router.post('/profile-image', userAuth, upload.single('image'), async (req, res)
     if (!currentUser) {
       return res.status(404).send({
         success: false,
-        message: "User not found"
+        message: 'User not found',
       });
     }
-
-const fs = require('fs');
-const path = require('path');
-
-// Ensure uploads directory exists
-const uploadsDir = path.join(__dirname, '../../uploads');
-if (!fs.existsSync(uploadsDir)) {
-  fs.mkdirSync(uploadsDir, { recursive: true });
-}
 
     let secure_url;
     let public_id = `photo_${Date.now()}`;
@@ -60,19 +63,15 @@ if (!fs.existsSync(uploadsDir)) {
       const result = await replaceCloudinaryAsset(oldPublicId, req.file.buffer, {
         folder: `${process.env.CLOUDINARY_FOLDER || 'portfolio-cms'}/profiles`,
         resource_type: 'image',
-        transformation: [{ width: 800, height: 800, crop: 'limit', quality: 'auto', fetch_format: 'auto' }]
+        transformation: [{ width: 800, height: 800, crop: 'limit', quality: 'auto', fetch_format: 'auto' }],
       });
       secure_url = result.secure_url;
       public_id = result.public_id;
     } catch (cErr) {
-      console.warn("Cloudinary fallback to local static file:", cErr.message);
-      const ext = (req.file.mimetype && req.file.mimetype.split('/')[1]) || 'jpg';
-      const filename = `photo_${Date.now()}_${Math.round(Math.random() * 1e6)}.${ext}`;
-      fs.writeFileSync(path.join(uploadsDir, filename), req.file.buffer);
-      secure_url = `/uploads/${filename}`;
+      console.warn('Cloudinary fallback to local static file:', cErr.message);
+      secure_url = saveFallbackFile('photo', check.ext, req.file.buffer);
     }
 
-    // Update User in Database
     currentUser.profileImage = secure_url;
     if (!currentUser.photos || currentUser.photos.length === 0) {
       currentUser.photos = [secure_url];
@@ -83,34 +82,32 @@ if (!fs.existsSync(uploadsDir)) {
 
     res.send({
       success: true,
-      message: "Profile image updated successfully! ☁️",
+      message: 'Profile image updated successfully! ☁️',
       data: {
         profileImage: secure_url,
         publicId: public_id,
-        photos: currentUser.photos
-      }
+        photos: currentUser.photos,
+      },
     });
   } catch (error) {
-    console.log("Profile upload error:", error.message);
+    console.log('Profile upload error:', error.message);
     res.status(500).send({
       success: false,
-      message: error.message || "Failed to upload profile image"
+      message: error.message || 'Failed to upload profile image',
     });
   }
 });
 
-
 // =========================================================================
-// 2. ADD PHOTO TO USER GALLERY (Cloudinary)
-// Kaam: User ki gallery me nayi photo add karta hai (Max 6 photos).
-// Kab use hota hai: Edit Profile page par additional photo slots me image add karne par.
+// 2. ADD PHOTO TO USER GALLERY
 // =========================================================================
-router.post('/photo', userAuth, upload.single('image'), async (req, res) => {
+router.post('/photo', userAuth, imageUpload.single('image'), async (req, res) => {
   try {
-    if (!req.file) {
+    const check = validateUploadedFile(req.file, IMAGE_MIME_TO_EXT);
+    if (!check.ok) {
       return res.status(400).send({
         success: false,
-        message: "Please select a photo to upload"
+        message: check.message,
       });
     }
 
@@ -119,34 +116,32 @@ router.post('/photo', userAuth, upload.single('image'), async (req, res) => {
     if (!currentUser) {
       return res.status(404).send({
         success: false,
-        message: "User not found"
+        message: 'User not found',
       });
     }
 
     if (currentUser.photos && currentUser.photos.length >= 6) {
       return res.status(400).send({
         success: false,
-        message: "Maximum 6 photos allowed per profile"
+        message: 'Maximum 6 photos allowed per profile',
       });
     }
 
     let secure_url;
     let public_id = `gallery_${Date.now()}`;
+    let result = null;
 
     try {
-      const result = await uploadFromBuffer(req.file.buffer, {
+      result = await uploadFromBuffer(req.file.buffer, {
         folder: `${process.env.CLOUDINARY_FOLDER || 'portfolio-cms'}/gallery`,
         resource_type: 'image',
-        transformation: [{ width: 1200, height: 1200, crop: 'limit', quality: 'auto', fetch_format: 'auto' }]
+        transformation: [{ width: 1200, height: 1200, crop: 'limit', quality: 'auto', fetch_format: 'auto' }],
       });
       secure_url = result.secure_url;
       public_id = result.public_id;
     } catch (cErr) {
-      console.warn("Cloudinary fallback to local static file:", cErr.message);
-      const ext = (req.file.mimetype && req.file.mimetype.split('/')[1]) || 'jpg';
-      const filename = `gallery_${Date.now()}_${Math.round(Math.random() * 1e6)}.${ext}`;
-      fs.writeFileSync(path.join(uploadsDir, filename), req.file.buffer);
-      secure_url = `/uploads/${filename}`;
+      console.warn('Cloudinary fallback to local static file:', cErr.message);
+      secure_url = saveFallbackFile('gallery', check.ext, req.file.buffer);
     }
 
     currentUser.photos = currentUser.photos || [];
@@ -156,55 +151,55 @@ router.post('/photo', userAuth, upload.single('image'), async (req, res) => {
     }
     await currentUser.save();
 
-    const mediaDoc = await mediaModel.create({
-      url: result.url,
-      secure_url: result.secure_url,
-      publicId: result.public_id,
-      resourceType: 'image',
-      format: result.format,
-      width: result.width,
-      height: result.height,
-      bytes: result.bytes,
-      folder: result.folder || 'portfolio-cms/gallery',
-      uploadedBy: userId,
-      entityType: 'gallery',
-      entityId: userId.toString(),
-      title: `${currentUser.firstName || 'User'} Gallery Photo`,
-      status: 'active'
-    });
+    let mediaDoc = null;
+    if (result) {
+      mediaDoc = await mediaModel.create({
+        url: result.url,
+        secure_url: result.secure_url,
+        publicId: result.public_id,
+        resourceType: 'image',
+        format: result.format,
+        width: result.width,
+        height: result.height,
+        bytes: result.bytes,
+        folder: result.folder || 'portfolio-cms/gallery',
+        uploadedBy: userId,
+        entityType: 'gallery',
+        entityId: userId.toString(),
+        title: `${currentUser.firstName || 'User'} Gallery Photo`,
+        status: 'active',
+      });
+    }
 
     res.send({
       success: true,
-      message: "Gallery photo uploaded to Cloudinary successfully! ☁️",
+      message: 'Gallery photo uploaded successfully! ☁️',
       data: {
-        photoUrl: result.secure_url,
-        publicId: result.public_id,
+        photoUrl: secure_url,
+        publicId: public_id,
         photos: currentUser.photos,
-        media: mediaDoc
-      }
+        media: mediaDoc,
+      },
     });
   } catch (error) {
-    console.log("Gallery upload error:", error.message);
+    console.log('Gallery upload error:', error.message);
     res.status(500).send({
       success: false,
-      message: error.message || "Failed to upload photo"
+      message: error.message || 'Failed to upload photo',
     });
   }
 });
 
-
 // =========================================================================
-// 3. DELETE PHOTO FROM USER GALLERY
-// Kaam: Gallery photo delete karta hai aur Cloudinary asset ko destroy karta hai.
-// Kab use hota hai: Edit profile screen par photo ke upar (X) close button dabane par.
+// 3. DELETE PHOTO FROM USER GALLERY (Ownership-verified to prevent IDOR)
 // =========================================================================
 router.delete('/photo', userAuth, async (req, res) => {
   try {
-    const { photoUrl, publicId } = req.body;
+    const { photoUrl, publicId } = req.body || {};
     if (!photoUrl && !publicId) {
       return res.status(400).send({
         success: false,
-        message: "photoUrl or publicId is required"
+        message: 'photoUrl or publicId is required',
       });
     }
 
@@ -213,70 +208,89 @@ router.delete('/photo', userAuth, async (req, res) => {
     if (!currentUser) {
       return res.status(404).send({
         success: false,
-        message: "User not found"
+        message: 'User not found',
       });
     }
 
-    // Remove photo from user's photos array
-    currentUser.photos = (currentUser.photos || []).filter((p) => p !== photoUrl);
-    if (currentUser.profileImage === photoUrl) {
+    const ownedPhotos = currentUser.photos || [];
+    const targetPublicId = typeof publicId === 'string' && publicId.trim()
+      ? publicId.trim()
+      : extractPublicIdFromUrl(photoUrl);
+
+    const ownsPhotoUrl = typeof photoUrl === 'string' && ownedPhotos.includes(photoUrl);
+    const ownedMediaRecord = targetPublicId
+      ? await mediaModel.findOne({ publicId: targetPublicId, uploadedBy: userId })
+      : null;
+
+    if (!ownsPhotoUrl && !ownedMediaRecord) {
+      return res.status(403).send({
+        success: false,
+        message: 'You are not authorized to delete this photo',
+      });
+    }
+
+    if (typeof photoUrl === 'string') {
+      currentUser.photos = ownedPhotos.filter((p) => p !== photoUrl);
+    } else if (ownedMediaRecord) {
+      currentUser.photos = ownedPhotos.filter(
+        (p) => p !== ownedMediaRecord.secure_url && p !== ownedMediaRecord.url
+      );
+    }
+
+    if (currentUser.profileImage === photoUrl || (ownedMediaRecord && currentUser.profileImage === ownedMediaRecord.secure_url)) {
       currentUser.profileImage = currentUser.photos[0] || '';
     }
     await currentUser.save();
 
-    // Destroy asset on Cloudinary
-    const targetPublicId = publicId || extractPublicIdFromUrl(photoUrl);
     if (targetPublicId) {
       await deleteFromCloudinary(targetPublicId, 'image');
-      await mediaModel.findOneAndDelete({ publicId: targetPublicId });
+      await mediaModel.findOneAndDelete({ publicId: targetPublicId, uploadedBy: userId });
     }
 
     res.send({
       success: true,
-      message: "Photo deleted from Cloudinary and profile updated",
+      message: 'Photo deleted from Cloudinary and profile updated',
       data: {
         photos: currentUser.photos,
-        profileImage: currentUser.profileImage
-      }
+        profileImage: currentUser.profileImage,
+      },
     });
   } catch (error) {
-    console.log("Delete photo error:", error.message);
+    console.log('Delete photo error:', error.message);
     res.status(500).send({
       success: false,
-      message: error.message || "Failed to delete photo"
+      message: error.message || 'Failed to delete photo',
     });
   }
 });
 
-
 // =========================================================================
 // 4. UPLOAD CHAT ATTACHMENT
-// Kaam: Voice note ya image attachment ko Cloudinary par stream karta hai.
-// Kab use hota hai: Chat screen par user dwara file send karne par.
 // =========================================================================
-router.post('/chat-attachment', userAuth, upload.single('file'), async (req, res) => {
+router.post('/chat-attachment', userAuth, chatUpload.single('file'), async (req, res) => {
   try {
-    if (!req.file) {
+    const check = validateUploadedFile(req.file, CHAT_MEDIA_MIME_TO_EXT);
+    if (!check.ok) {
       return res.status(400).send({
         success: false,
-        message: "No file provided"
+        message: check.message,
       });
     }
 
-    const isAudio = req.file.mimetype.startsWith('audio');
-    const isVideo = req.file.mimetype.startsWith('video');
+    const isAudio = check.mime.startsWith('audio');
+    const isVideo = check.mime.startsWith('video');
     const resourceType = (isAudio || isVideo) ? 'video' : 'image';
 
     const result = await uploadFromBuffer(req.file.buffer, {
       folder: `${process.env.CLOUDINARY_FOLDER || 'portfolio-cms'}/chat`,
-      resource_type: resourceType
+      resource_type: resourceType,
     });
 
     const mediaDoc = await mediaModel.create({
       url: result.url,
       secure_url: result.secure_url,
       publicId: result.public_id,
-      resourceType: resourceType,
+      resourceType,
       format: result.format,
       width: result.width || 0,
       height: result.height || 0,
@@ -284,22 +298,22 @@ router.post('/chat-attachment', userAuth, upload.single('file'), async (req, res
       folder: result.folder || 'portfolio-cms/chat',
       uploadedBy: req.user._id,
       entityType: 'chat',
-      title: `Chat Attachment (${req.file.originalname || 'File'})`,
-      status: 'active'
+      title: 'Chat Attachment',
+      status: 'active',
     });
 
     res.send({
       success: true,
       fileUrl: result.secure_url,
       publicId: result.public_id,
-      resourceType: resourceType,
-      media: mediaDoc
+      resourceType,
+      media: mediaDoc,
     });
   } catch (error) {
-    console.log("Chat attachment error:", error.message);
+    console.log('Chat attachment error:', error.message);
     res.status(500).send({
       success: false,
-      message: error.message || "Failed to upload chat attachment"
+      message: error.message || 'Failed to upload chat attachment',
     });
   }
 });

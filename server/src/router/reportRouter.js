@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const reportModel = require('../modal/report');
 const userAuth = require('../utils/userAuth');
+const { isValidObjectId } = require('../utils/securityMiddleware');
 
 const validReasons = ['fake-profile', 'spam', 'harassment', 'inappropriate-content', 'scam', 'other'];
 
@@ -15,7 +16,14 @@ router.post('/report/:userId', userAuth, async (req, res) => {
     try {
         const reporterId = req.userId;
         const reportedUserId = req.params.userId;
-        const { reason, description } = req.body;
+        const { reason, description } = req.body || {};
+
+        if (!isValidObjectId(reportedUserId)) {
+            return res.status(400).send({
+                status: false,
+                message: "Invalid user ID"
+            });
+        }
 
         if (reporterId.toString() === reportedUserId.toString()) {
             return res.status(400).send({

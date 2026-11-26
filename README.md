@@ -67,10 +67,11 @@ git clone https://github.com/zaid154/Devmeet.git
 cd Devmeet
 ```
 
-### 2️⃣ Install All Dependencies
-Run from the root directory to install root, backend, and frontend packages simultaneously:
+### 2️⃣ Install Dependencies
+Install `server` and `client` dependencies in their respective folders:
 ```bash
-npm install
+cd server && npm install
+cd ../client && npm install
 ```
 
 ### 3️⃣ Environment Configuration
@@ -78,7 +79,7 @@ Create a `.env` file in the `server/` directory:
 ```env
 PORT=3000
 MONGO_URI=mongodb+srv://<username>:<password>@cluster.mongodb.net/devmeet?retryWrites=true&w=majority
-JWT_SECRET=your_super_secret_jwt_key
+JWT_PVT_KEY=your_super_secret_jwt_key
 SALT_ROUND=10
 ADMIN_EMAIL=admin@devmeet.com
 ADMIN_PASSWORD=AdminPassword123!
@@ -90,9 +91,13 @@ VITE_API_URL=http://localhost:3000
 ```
 
 ### 4️⃣ Start Development Servers
-Run both Backend (Port 3000) and Frontend (Port 5173) with a single command:
+Run Backend (`3000`) and Frontend (`5173`) in separate terminals:
 ```bash
-npm run dev
+# Terminal 1 (Backend)
+cd server && npm run dev
+
+# Terminal 2 (Frontend)
+cd client && npm run dev
 ```
 
 - **Frontend App**: [http://localhost:5173](http://localhost:5173)

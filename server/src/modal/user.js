@@ -4,6 +4,7 @@ const validator = require('validator');
 require('dotenv').config()
 const jwt = require('jsonwebtoken')
 const bcrypt = require('bcrypt');
+const { getJwtSecret } = require('../utils/securityMiddleware');
 
 const userSchema = new Schema({
     firstName: {
@@ -188,26 +189,48 @@ const userSchema = new Schema({
         trim: true,
         default: ''
     },
-    // Password reset
+    // Password reset & session invalidation
     resetPasswordToken: String,
-    resetPasswordExpires: Date
+    resetPasswordExpires: Date,
+    passwordChangedAt: Date
 },
     {
         timestamps: true,
-        versionKey: false
+        versionKey: false,
+        toJSON: {
+            transform(_doc, ret) {
+                delete ret.password;
+                delete ret.resetPasswordToken;
+                delete ret.resetPasswordExpires;
+                return ret;
+            }
+        },
+        toObject: {
+            transform(_doc, ret) {
+                delete ret.password;
+                delete ret.resetPasswordToken;
+                delete ret.resetPasswordExpires;
+                return ret;
+            }
+        }
     })
 
 
 userSchema.methods.validatePassword = async function (password) {
     const user = this
+    if (!user.password) return false;
     const checkPassword = await bcrypt.compare(password, user.password)
     return checkPassword
 }
 
 userSchema.methods.getToken = async function () {
     const user = this;
-    const secret = process.env.JWT_PVT_KEY || process.env.JWT_SECRET || 'dev_super_secret_change_me_0123456789abcdef';
-    const token = await jwt.sign({ userId: user._id }, secret, { expiresIn: process.env.JWT_EXPIRES_IN || "7d" });
+    const secret = getJwtSecret();
+    const token = jwt.sign(
+        { userId: user._id.toString() },
+        secret,
+        { algorithm: 'HS256', expiresIn: process.env.JWT_EXPIRES_IN || "7d" }
+    );
     return token;
 };
 

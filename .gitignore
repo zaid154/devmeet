@@ -1,20 +1,20 @@
 # Node & Dependencies
 node_modules/
-backend/node_modules/
-frontend/node_modules/
+client/node_modules/
+server/node_modules/
 
 # Environment Files
 .env
 .env.local
 .env.*.local
 *.env
-backend/.env
-frontend/.env
+client/.env
+server/.env
 
 # Production Builds
 dist/
 build/
-frontend/dist/
+client/dist/
 
 # Logs
 logs/
@@ -30,7 +30,7 @@ yarn-error.log*
 Thumbs.db
 
 # Temporary & Scratch
-backend/scratch/
+server/scratch/
 scratch/
 tmp/
 temp/

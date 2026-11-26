@@ -74,7 +74,7 @@ router.get('/features/public', async (req, res) => {
 // =========================================================================
 router.post('/verification/request', userAuth, async (req, res) => {
     try {
-        const { documentUrl, selfieUrl } = req.body;
+        const { documentUrl, selfieUrl } = req.body || {};
         const user = await userModel.findById(req.userId);
         if (!user) {
             return res.status(404).send({
@@ -90,8 +90,11 @@ router.post('/verification/request', userAuth, async (req, res) => {
             });
         }
 
+        const safeDoc = [documentUrl, selfieUrl]
+            .find((u) => typeof u === 'string' && /^(https?:\/\/|\/uploads\/)/i.test(u.trim()));
+
         user.verificationStatus = 'pending';
-        user.verificationDocument = documentUrl || selfieUrl || user.profileImage;
+        user.verificationDocument = safeDoc ? safeDoc.trim() : user.profileImage;
         user.verificationSubmittedAt = new Date();
         await user.save();
 
@@ -119,7 +122,8 @@ router.post('/verification/request', userAuth, async (req, res) => {
 // =========================================================================
 router.post('/passport/location', userAuth, async (req, res) => {
     try {
-        const { city } = req.body;
+        const { city } = req.body || {};
+        const safeCity = typeof city === 'string' ? city.trim().slice(0, 100) : '';
         const user = await userModel.findById(req.userId);
         if (!user) {
             return res.status(404).send({
@@ -128,12 +132,12 @@ router.post('/passport/location', userAuth, async (req, res) => {
             });
         }
 
-        user.passportCity = city || '';
+        user.passportCity = safeCity;
         await user.save();
 
         res.send({
             status: true,
-            message: city ? `Passport set to ${city}` : "Passport reset to current location",
+            message: safeCity ? `Passport set to ${safeCity}` : "Passport reset to current location",
             data: { passportCity: user.passportCity }
         });
     } catch (error) {

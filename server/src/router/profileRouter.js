@@ -1,123 +1,151 @@
 const express = require('express');
 const router = express.Router();
-const mongoose = require('mongoose');
+const jwt = require('jsonwebtoken');
 
 const userModel = require('../modal/user');
 const connectionModel = require('../modal/connection');
-const blockModel = require('../modal/block');
 const messageModel = require('../modal/message');
-const reportModel = require('../modal/report');
 const userAuth = require('../utils/userAuth');
-const { buildDiscoveryQuery, normalizePreference } = require('../utils/matchingService');
+const { buildDiscoveryQuery } = require('../utils/matchingService');
+const {
+    getJwtSecret,
+    getCookieOptions,
+    extractToken,
+    escapeRegex,
+    isValidObjectId,
+} = require('../utils/securityMiddleware');
+
+// Public-safe projection: never expose email, phone, password, reset tokens, role, or moderation notes
+const PUBLIC_USER_PROJECTION =
+    'firstName lastName age gender bio photos profileImage interests skills job location education height zodiacSign relationshipGoal favoriteArtist favoriteSong musicGenre isVerified isOnline lastSeen passportCity';
 
 // Optional auth helper (Allows guests or logged-in users to view public feeds)
-const optionalUserAuth = async (req, res, next) => {
+const optionalUserAuth = async (req, _res, next) => {
     try {
-        let token = req?.cookies?.token;
-        if (!token && req.headers.authorization) {
-            token = req.headers.authorization.replace('Bearer ', '');
-        }
+        const token = extractToken(req, false);
         if (token) {
-            const jwt = require('jsonwebtoken');
-            const secret = process.env.JWT_PVT_KEY || process.env.JWT_SECRET || 'dev_super_secret_change_me_0123456789abcdef';
-            const decoded = jwt.verify(token, secret);
-            if (decoded && decoded.userId) {
-                req.user = await userModel.findById(decoded.userId);
-                req.userId = req.user?._id;
+            const decoded = jwt.verify(token, getJwtSecret(), { algorithms: ['HS256'] });
+            if (decoded?.userId && isValidObjectId(decoded.userId)) {
+                const user = await userModel
+                    .findById(decoded.userId)
+                    .select('-password -resetPasswordToken -resetPasswordExpires');
+                if (user && user.accountStatus === 'active') {
+                    const changedTs = user.passwordChangedAt
+                        ? Math.floor(user.passwordChangedAt.getTime() / 1000)
+                        : 0;
+                    if (!changedTs || !decoded.iat || decoded.iat >= changedTs) {
+                        req.user = user;
+                        req.userId = user._id;
+                    }
+                }
             }
         }
-    } catch (e) {}
+    } catch (_e) {}
     next();
 };
 
-
 // =========================================================================
 // 1. GET CURRENT LOGGED-IN USER PROFILE
-// Kaam: Logged-in user ka apna profile data return karta hai.
-// Kab use hota hai: App open hone par ya Profile screen par user details load karne ke liye.
 // =========================================================================
 router.get('/profile', userAuth, async (req, res) => {
     try {
-        const user = await userModel.findById(req.userId).select('-password');
+        const user = await userModel
+            .findById(req.userId)
+            .select('-password -resetPasswordToken -resetPasswordExpires');
         if (!user) {
             return res.status(404).send({
                 status: false,
-                message: "User not found"
+                message: 'User not found',
             });
         }
 
         res.send({
             status: true,
-            message: "Profile fetched successfully",
-            data: user
+            message: 'Profile fetched successfully',
+            data: user,
         });
     } catch (error) {
         res.status(500).send({
             status: false,
-            message: error.message
+            message: error.message,
         });
     }
 });
 
-
 // =========================================================================
-// 2. GET USER PROFILE BY ID
-// Kaam: Kisi doosre user ki detailed profile dekhne ke liye use hota hai.
-// Kab use hota hai: Swipe deck me card expand karne par ya matched profile open karne par.
+// 2. GET USER PROFILE BY ID (Public-safe projection only)
 // =========================================================================
 router.get('/user/:id', optionalUserAuth, async (req, res) => {
     try {
         const { id } = req.params;
-        if (!mongoose.Types.ObjectId.isValid(id)) {
+        if (!isValidObjectId(id)) {
             return res.status(400).send({
                 status: false,
-                message: "Invalid User ID"
+                message: 'Invalid User ID',
             });
         }
 
-        const user = await userModel.findById(id).select('-password');
+        const user = await userModel
+            .findOne({ _id: id, accountStatus: 'active' })
+            .select(PUBLIC_USER_PROJECTION);
         if (!user) {
             return res.status(404).send({
                 status: false,
-                message: "User not found"
+                message: 'User not found',
             });
         }
 
         res.send({
             status: true,
-            message: "User found successfully",
-            data: user
+            message: 'User found successfully',
+            data: user,
         });
     } catch (error) {
         res.status(500).send({
             status: false,
-            message: error.message
+            message: error.message,
         });
     }
 });
 
-
 // =========================================================================
-// 3. UPDATE PROFILE API
-// Kaam: User ka bio, skills, location, interests, photos, aur goals update karta hai.
-// Kab use hota hai: Jab user 'Edit Profile' screen par details save karta hai.
+// 3. UPDATE PROFILE API (Strict field & nested preferences sanitization)
 // =========================================================================
 router.patch('/updateProfile', userAuth, async (req, res) => {
     try {
         const userId = req.userId;
-        const allowedFields = [
-            "firstName", "lastName", "age", "skills", "profileImage", "phone",
-            "bio", "interests", "relationshipGoal", "interestedIn", "lookingFor", "location",
-            "education", "job", "height", "zodiacSign", "favoriteArtist",
-            "favoriteSong", "musicGenre", "gender", "photos", "preferences"
+        const allowedScalarFields = [
+            'firstName', 'lastName', 'age', 'skills', 'profileImage', 'phone',
+            'bio', 'interests', 'relationshipGoal', 'interestedIn', 'lookingFor', 'location',
+            'education', 'job', 'height', 'zodiacSign', 'favoriteArtist',
+            'favoriteSong', 'musicGenre', 'gender', 'photos',
         ];
 
         const updateData = {};
-        Object.keys(req.body).forEach(key => {
-            if (allowedFields.includes(key)) {
+        for (const key of allowedScalarFields) {
+            if (req.body && Object.prototype.hasOwnProperty.call(req.body, key)) {
                 updateData[key] = req.body[key];
             }
-        });
+        }
+
+        if (req.body?.preferences && typeof req.body.preferences === 'object') {
+            const p = req.body.preferences;
+            if (p.ageMin !== undefined) updateData['preferences.ageMin'] = Math.min(60, Math.max(18, Number(p.ageMin) || 18));
+            if (p.ageMax !== undefined) updateData['preferences.ageMax'] = Math.min(60, Math.max(18, Number(p.ageMax) || 45));
+            if (typeof p.gender === 'string') updateData['preferences.gender'] = p.gender;
+            if (typeof p.location === 'string') updateData['preferences.location'] = p.location.trim();
+            if (p.maxDistance !== undefined) updateData['preferences.maxDistance'] = Math.min(10000, Math.max(1, Number(p.maxDistance) || 100));
+        }
+
+        if (Array.isArray(updateData.photos)) {
+            updateData.photos = updateData.photos.filter((p) => typeof p === 'string').slice(0, 6);
+        }
+        if (Array.isArray(updateData.skills)) {
+            updateData.skills = updateData.skills.filter((s) => typeof s === 'string').slice(0, 30);
+        }
+        if (Array.isArray(updateData.interests)) {
+            updateData.interests = updateData.interests.filter((i) => typeof i === 'string').slice(0, 30);
+        }
 
         // Keep interestedIn and preferences.gender synchronized
         if (updateData.interestedIn) {
@@ -131,113 +159,98 @@ router.patch('/updateProfile', userAuth, async (req, res) => {
             userId,
             { $set: updateData },
             { new: true, runValidators: true }
-        ).select('-password');
+        ).select('-password -resetPasswordToken -resetPasswordExpires');
 
         if (!updatedUser) {
             return res.status(404).send({
                 status: false,
-                message: "User not found"
+                message: 'User not found',
             });
         }
 
         res.send({
             status: true,
-            message: "Profile updated successfully! 🎉",
-            data: updatedUser
+            message: 'Profile updated successfully! 🎉',
+            data: updatedUser,
         });
     } catch (error) {
-        console.error("updateProfile error:", error.message);
+        console.error('updateProfile error:', error.message);
         res.status(500).send({
             status: false,
-            message: error.message || "Failed to update profile"
+            message: error.message || 'Failed to update profile',
         });
     }
 });
 
-
 // =========================================================================
 // 4. GET FEED RECOMMENDATIONS (Swipe Deck)
-// Kaam: Strict sexual & romantic preference ke hisab se matching profiles return karta hai.
-// Kab use hota hai: Feed / Dating swipe screen par card stack load karne ke liye.
 // =========================================================================
 router.get('/allUser', optionalUserAuth, async (req, res) => {
     try {
         const currentUser = req.user;
-        const limit = Number(req.query.limit) || 50;
+        const limit = Math.min(50, Math.max(1, Number(req.query.limit) || 50));
 
-        // Build exact preference-based matching query
         const discoveryFilter = await buildDiscoveryQuery(currentUser, req.query);
 
         const feedUsers = await userModel.find(discoveryFilter)
-            .select('-password')
+            .select(PUBLIC_USER_PROJECTION)
             .limit(limit);
 
         res.send({
             status: true,
-            message: "Feed recommendations fetched successfully",
-            data: feedUsers
+            message: 'Feed recommendations fetched successfully',
+            data: feedUsers,
         });
     } catch (error) {
         res.status(500).send({
             status: false,
-            message: error.message
+            message: error.message,
         });
     }
 });
 
-
 // =========================================================================
 // 5. RESET FEED API
-// Kaam: User ki 'ignored' / 'passed' connections clear karke feed dobara refresh karta hai.
-// Kab use hota hai: Jab feed me saare profiles khatam ho jayein aur user 'Start Over' click kare.
 // =========================================================================
 router.post('/resetFeed', userAuth, async (req, res) => {
     try {
-        const currentUserId = req.userId;
-
-        // Clear ignored connections
         await connectionModel.deleteMany({
-            fromUserId: currentUserId,
-            status: 'ignored'
+            fromUserId: req.userId,
+            status: 'ignored',
         });
 
         res.send({
             status: true,
-            message: "Feed has been reset successfully! New profiles are now available."
+            message: 'Feed has been reset successfully! New profiles are now available.',
         });
     } catch (error) {
         res.status(500).send({
             status: false,
-            message: error.message
+            message: error.message,
         });
     }
 });
 
-
 // =========================================================================
-// =========================================================================
-// 5. SEARCH USERS API (Direct Username, Full Name & Tech Stack Search)
-// Kaam: Direct Username, Name, Skills, Job ya Location search karta hai.
+// 6. SEARCH USERS API (Public-safe projection, never leaks email/phone)
 // =========================================================================
 router.get(['/searchUsers', '/search/users', '/user/search'], optionalUserAuth, async (req, res) => {
     try {
-        const rawQuery = (req.query.query || req.query.q || req.query.username || '').toString().trim();
+        const rawQuery = (req.query.query || req.query.q || req.query.username || '').toString().trim().slice(0, 80);
         const currentUserId = req.userId || req.user?._id;
 
-        let filter = { accountStatus: { $ne: 'banned' } };
+        const filter = { accountStatus: 'active', role: 'user' };
 
         if (rawQuery) {
-            // Escape special regex characters to prevent regex compile errors
-            const escaped = rawQuery.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            const escaped = escapeRegex(rawQuery);
             const regex = new RegExp(escaped, 'i');
             filter.$or = [
                 { firstName: regex },
                 { lastName: regex },
-                { email: regex },
                 { job: regex },
                 { location: regex },
                 { skills: regex },
-                { interests: regex }
+                { interests: regex },
             ];
         }
 
@@ -246,16 +259,16 @@ router.get(['/searchUsers', '/search/users', '/user/search'], optionalUserAuth, 
         }
 
         const results = await userModel.find(filter)
-            .select('-password')
+            .select(PUBLIC_USER_PROJECTION)
             .sort({ _id: -1 })
             .limit(50)
             .lean();
 
         res.send({
             status: true,
-            message: "Search results fetched successfully",
+            message: 'Search results fetched successfully',
             count: results.length,
-            data: results || []
+            data: results || [],
         });
     } catch (error) {
         console.error('Search error in router:', error.message);
@@ -263,76 +276,91 @@ router.get(['/searchUsers', '/search/users', '/user/search'], optionalUserAuth, 
             status: true,
             count: 0,
             data: [],
-            message: "No results found"
+            message: 'No results found',
         });
     }
 });
 
-
 // =========================================================================
-// 6. GET SINGLE USER PROFILE DETAILS
-// Kaam: Kisi dusre candidate ki full profile (bio, interests, photos, skills) dekhne ke liye.
-// Kab use hota hai: Feed card par tap karke full details modal kholne par.
+// 7. GET SINGLE USER PROFILE DETAILS
 // =========================================================================
 router.get('/user-profile/:id', userAuth, async (req, res) => {
     try {
         const targetUserId = req.params.id;
+        if (!isValidObjectId(targetUserId)) {
+            return res.status(400).send({
+                status: false,
+                message: 'Invalid User ID',
+            });
+        }
 
-        const user = await userModel.findById(targetUserId).select('-password');
+        const user = await userModel
+            .findOne({ _id: targetUserId, accountStatus: 'active' })
+            .select(PUBLIC_USER_PROJECTION);
         if (!user) {
             return res.status(404).send({
                 status: false,
-                message: "User not found"
+                message: 'User not found',
             });
         }
 
         res.send({
             status: true,
-            data: user
+            data: user,
         });
     } catch (error) {
         res.status(500).send({
             status: false,
-            message: error.message
+            message: error.message,
         });
     }
 });
 
-
 // =========================================================================
-// 7. REQUEST PHOTO VERIFICATION BADGE (Blue Checkmark)
-// Kaam: User ki photo verification request submit karta hai.
-// Kab use hota hai: Jab user profile me 'Get Verified' badge ke liye apply karta hai.
+// 8. REQUEST PHOTO VERIFICATION BADGE (Enters pending admin review queue)
 // =========================================================================
 router.post('/verify', userAuth, async (req, res) => {
     try {
-        const user = await userModel.findByIdAndUpdate(
-            req.userId,
-            {
-                isVerified: true,
-                verificationStatus: 'approved'
-            },
-            { new: true }
-        ).select('-password');
+        const currentUser = await userModel
+            .findById(req.userId)
+            .select('-password -resetPasswordToken -resetPasswordExpires');
+        if (!currentUser) {
+            return res.status(404).send({
+                status: false,
+                message: 'User not found',
+            });
+        }
+
+        if (currentUser.isVerified) {
+            return res.send({
+                status: true,
+                message: 'Your profile is already verified.',
+                data: currentUser,
+            });
+        }
+
+        currentUser.verificationStatus = 'pending';
+        currentUser.verificationSubmittedAt = new Date();
+        if (!currentUser.verificationDocument && currentUser.profileImage) {
+            currentUser.verificationDocument = currentUser.profileImage;
+        }
+        await currentUser.save();
 
         res.send({
             status: true,
-            message: "Verification approved! Blue badge is now active on your profile. ✓",
-            data: user
+            message: 'Verification request submitted for admin review.',
+            data: currentUser,
         });
     } catch (error) {
         res.status(500).send({
             status: false,
-            message: error.message
+            message: error.message,
         });
     }
 });
 
-
 // =========================================================================
-// 8. DELETE USER ACCOUNT PERMANENTLY
-// Kaam: User ka account aur uske saare matches/chats permanently delete karta hai.
-// Kab use hota hai: Settings me 'Delete Account' par click karne par.
+// 9. DELETE USER ACCOUNT PERMANENTLY
 // =========================================================================
 router.delete('/account', userAuth, async (req, res) => {
     try {
@@ -340,32 +368,31 @@ router.delete('/account', userAuth, async (req, res) => {
 
         await userModel.findByIdAndDelete(currentUserId);
 
-        // Delete connections, messages and reports
         await connectionModel.deleteMany({
-            $or: [{ fromUserId: currentUserId }, { toUserId: currentUserId }]
+            $or: [{ fromUserId: currentUserId }, { toUserId: currentUserId }],
         });
 
         await messageModel.deleteMany({
-            $or: [{ senderId: currentUserId }, { receiverId: currentUserId }]
+            $or: [{ senderId: currentUserId }, { receiverId: currentUserId }],
         });
 
-        res.cookie('token', null, { expires: new Date(Date.now()) });
+        res.cookie('token', '', getCookieOptions(true));
+        res.cookie('adminToken', '', getCookieOptions(true));
 
         res.send({
             status: true,
-            message: "Account deleted permanently"
+            message: 'Account deleted permanently',
         });
     } catch (error) {
         res.status(500).send({
             status: false,
-            message: error.message
+            message: error.message,
         });
     }
 });
 
-
 // =========================================================================
-// 9. GET USER SETTINGS (Preferences & Privacy)
+// 10. GET USER SETTINGS (Preferences & Privacy)
 // =========================================================================
 router.get('/settings', userAuth, async (req, res) => {
     try {
@@ -373,7 +400,7 @@ router.get('/settings', userAuth, async (req, res) => {
         if (!user) {
             return res.status(404).send({
                 status: false,
-                message: "User not found"
+                message: 'User not found',
             });
         }
 
@@ -384,46 +411,45 @@ router.get('/settings', userAuth, async (req, res) => {
                     ageMin: user.preferences?.ageMin || 18,
                     ageMax: user.preferences?.ageMax || 45,
                     gender: user.interestedIn || user.preferences?.gender || 'everyone',
-                    location: user.preferences?.location || ''
+                    location: user.preferences?.location || '',
                 },
                 privacy: user.privacy || {
                     showOnlineStatus: true,
                     showLastSeen: true,
-                    showProfile: true
+                    showProfile: true,
                 },
                 interestedIn: user.interestedIn || 'everyone',
-                gender: user.gender
-            }
+                gender: user.gender,
+            },
         });
     } catch (error) {
         res.status(500).send({
             status: false,
-            message: error.message
+            message: error.message,
         });
     }
 });
 
-
 // =========================================================================
-// 10. UPDATE USER SETTINGS (Preferences & Privacy)
+// 11. UPDATE USER SETTINGS (Preferences & Privacy)
 // =========================================================================
 router.patch('/settings', userAuth, async (req, res) => {
     try {
         const { preferences, privacy } = req.body || {};
         const updateData = {};
 
-        if (preferences) {
-            if (preferences.ageMin !== undefined) updateData['preferences.ageMin'] = Number(preferences.ageMin);
-            if (preferences.ageMax !== undefined) updateData['preferences.ageMax'] = Number(preferences.ageMax);
-            if (preferences.location !== undefined) updateData['preferences.location'] = preferences.location;
-            if (preferences.gender) {
+        if (preferences && typeof preferences === 'object') {
+            if (preferences.ageMin !== undefined) updateData['preferences.ageMin'] = Math.min(60, Math.max(18, Number(preferences.ageMin) || 18));
+            if (preferences.ageMax !== undefined) updateData['preferences.ageMax'] = Math.min(60, Math.max(18, Number(preferences.ageMax) || 45));
+            if (typeof preferences.location === 'string') updateData['preferences.location'] = preferences.location.trim();
+            if (typeof preferences.gender === 'string' && preferences.gender) {
                 updateData['preferences.gender'] = preferences.gender;
                 updateData.interestedIn = preferences.gender;
                 updateData.lookingFor = preferences.gender;
             }
         }
 
-        if (privacy) {
+        if (privacy && typeof privacy === 'object') {
             if (privacy.showOnlineStatus !== undefined) updateData['privacy.showOnlineStatus'] = Boolean(privacy.showOnlineStatus);
             if (privacy.showLastSeen !== undefined) updateData['privacy.showLastSeen'] = Boolean(privacy.showLastSeen);
             if (privacy.showProfile !== undefined) updateData['privacy.showProfile'] = Boolean(privacy.showProfile);
@@ -433,17 +459,17 @@ router.patch('/settings', userAuth, async (req, res) => {
             req.userId,
             { $set: updateData },
             { new: true, runValidators: true }
-        ).select('-password');
+        ).select('-password -resetPasswordToken -resetPasswordExpires');
 
         res.send({
             status: true,
-            message: "Preferences updated successfully! 🎉",
-            data: updatedUser
+            message: 'Preferences updated successfully! 🎉',
+            data: updatedUser,
         });
     } catch (error) {
         res.status(500).send({
             status: false,
-            message: error.message
+            message: error.message,
         });
     }
 });

@@ -1,43 +1,47 @@
 const express = require('express');
 const router = express.Router();
-const multer = require('multer');
 
-const { adminAuth } = require('../utils/adminAuth');
+const { adminAuth, requireRoles } = require('../utils/adminAuth');
 const mediaModel = require('../modal/media');
-const userModel = require('../modal/user');
 const {
   uploadFromBuffer,
   deleteFromCloudinary,
-  replaceCloudinaryAsset
+  replaceCloudinaryAsset,
 } = require('../utils/cloudinaryService');
+const { escapeRegex, isValidObjectId, parsePagination } = require('../utils/securityMiddleware');
+const {
+  ADMIN_MEDIA_MIME_TO_EXT,
+  createSafeUploader,
+  validateUploadedFile,
+} = require('../utils/uploadValidation');
 
-// Multer memory storage for Admin CMS uploads (Up to 50MB)
-const upload = multer({
-  storage: multer.memoryStorage(),
-  limits: { fileSize: 50 * 1024 * 1024 }
-});
+const upload = createSafeUploader(ADMIN_MEDIA_MIME_TO_EXT, 50 * 1024 * 1024);
 
+function sanitizeFolder(rawFolder) {
+  if (typeof rawFolder !== 'string' || !rawFolder.trim()) {
+    return 'portfolio-cms/admin-uploads';
+  }
+  const cleaned = rawFolder.trim().replace(/\.\.+/g, '').replace(/[^a-zA-Z0-9/_-]/g, '');
+  return cleaned || 'portfolio-cms/admin-uploads';
+}
 
 // =========================================================================
 // 1. GET MEDIA CMS STATS & STORAGE METRICS
-// Kaam: Total assets count, Active/Restricted count aur total storage (MB) return karta hai.
-// Kab use hota hai: Admin Media CMS dashboard load hone par top stat cards ke liye.
 // =========================================================================
-router.get('/stats', adminAuth, async (req, res) => {
+router.get('/stats', adminAuth, async (_req, res) => {
   try {
     const totalCount = await mediaModel.countDocuments();
     const activeCount = await mediaModel.countDocuments({ status: 'active' });
     const restrictedCount = await mediaModel.countDocuments({ status: 'restricted' });
 
-    // Calculate total bytes stored in Cloudinary
     const bytesAggregation = await mediaModel.aggregate([
-      { $group: { _id: null, totalBytes: { $sum: '$bytes' } } }
+      { $group: { _id: null, totalBytes: { $sum: '$bytes' } } },
     ]);
     const totalBytes = bytesAggregation[0]?.totalBytes || 0;
     const totalStorageMB = (totalBytes / (1024 * 1024)).toFixed(2);
 
     const entityBreakdown = await mediaModel.aggregate([
-      { $group: { _id: '$entityType', count: { $sum: 1 } } }
+      { $group: { _id: '$entityType', count: { $sum: 1 } } },
     ]);
 
     res.send({
@@ -48,22 +52,19 @@ router.get('/stats', adminAuth, async (req, res) => {
         restrictedCount,
         totalBytes,
         totalStorageMB,
-        entityBreakdown
-      }
+        entityBreakdown,
+      },
     });
   } catch (error) {
     res.status(500).send({
       success: false,
-      message: error.message
+      message: error.message,
     });
   }
 });
 
-
 // =========================================================================
-// 2. LIST ALL MEDIA ITEMS (With Search, Filter & Pagination)
-// Kaam: Cloudinary par uploaded sabhi assets list karta hai.
-// Kab use hota hai: Admin Media CMS grid / table view load karne par.
+// 2. LIST ALL MEDIA ITEMS
 // =========================================================================
 router.get('/', adminAuth, async (req, res) => {
   try {
@@ -75,38 +76,29 @@ router.get('/', adminAuth, async (req, res) => {
       status = '',
       resourceType = '',
       sortBy = 'createdAt',
-      sortOrder = 'desc'
+      sortOrder = 'desc',
     } = req.query;
 
     const query = {};
+    if (typeof status === 'string' && status) query.status = status;
+    if (typeof entityType === 'string' && entityType) query.entityType = entityType;
+    if (typeof resourceType === 'string' && resourceType) query.resourceType = resourceType;
 
-    if (status) {
-      query.status = status;
-    }
-    if (entityType) {
-      query.entityType = entityType;
-    }
-    if (resourceType) {
-      query.resourceType = resourceType;
-    }
-
-    if (search.trim()) {
-      const searchRegex = new RegExp(search.trim(), 'i');
+    if (typeof search === 'string' && search.trim()) {
+      const searchRegex = new RegExp(escapeRegex(search.trim().slice(0, 80)), 'i');
       query.$or = [
         { title: searchRegex },
         { description: searchRegex },
         { publicId: searchRegex },
         { tags: { $in: [searchRegex] } },
-        { folder: searchRegex }
+        { folder: searchRegex },
       ];
     }
 
-    const pageNumber = Math.max(1, parseInt(page));
-    const limitNumber = Math.max(1, parseInt(limit));
-    const skip = (pageNumber - 1) * limitNumber;
-
-    const sortOptions = {};
-    sortOptions[sortBy] = sortOrder === 'asc' ? 1 : -1;
+    const { page: pageNumber, limit: limitNumber, skip } = parsePagination(page, limit, 100);
+    const allowedSortFields = ['createdAt', 'bytes', 'title', 'status', 'resourceType'];
+    const safeSortField = allowedSortFields.includes(sortBy) ? sortBy : 'createdAt';
+    const sortOptions = { [safeSortField]: sortOrder === 'asc' ? 1 : -1 };
 
     const [items, total] = await Promise.all([
       mediaModel
@@ -116,7 +108,7 @@ router.get('/', adminAuth, async (req, res) => {
         .limit(limitNumber)
         .populate('uploadedBy', 'firstName lastName email profileImage role')
         .lean(),
-      mediaModel.countDocuments(query)
+      mediaModel.countDocuments(query),
     ]);
 
     res.send({
@@ -126,29 +118,27 @@ router.get('/', adminAuth, async (req, res) => {
         total,
         page: pageNumber,
         limit: limitNumber,
-        pages: Math.ceil(total / limitNumber)
-      }
+        pages: Math.ceil(total / limitNumber),
+      },
     });
   } catch (error) {
     res.status(500).send({
       success: false,
-      message: error.message
+      message: error.message,
     });
   }
 });
 
-
 // =========================================================================
 // 3. ADMIN DIRECT CMS MEDIA UPLOAD
-// Kaam: Admin ko platform ke liye direct images/videos Cloudinary par upload karne deta hai.
-// Kab use hota hai: Media CMS me 'Upload Media' button click karne par.
 // =========================================================================
-router.post('/upload', adminAuth, upload.single('file'), async (req, res) => {
+router.post('/upload', adminAuth, requireRoles(['super-admin', 'admin', 'moderator']), upload.single('file'), async (req, res) => {
   try {
-    if (!req.file) {
+    const check = validateUploadedFile(req.file, ADMIN_MEDIA_MIME_TO_EXT);
+    if (!check.ok) {
       return res.status(400).send({
         success: false,
-        message: "No file provided for upload"
+        message: check.message,
       });
     }
 
@@ -157,20 +147,21 @@ router.post('/upload', adminAuth, upload.single('file'), async (req, res) => {
       description = '',
       entityType = 'cms',
       tags = '',
-      folder = 'portfolio-cms/admin-uploads'
-    } = req.body;
+      folder = 'portfolio-cms/admin-uploads',
+    } = req.body || {};
 
-    const isVideo = req.file.mimetype.startsWith('video');
+    const safeFolder = sanitizeFolder(folder);
+    const isVideo = check.mime.startsWith('video');
     const resourceType = isVideo ? 'video' : 'image';
 
     const result = await uploadFromBuffer(req.file.buffer, {
-      folder: folder,
-      resource_type: resourceType
+      folder: safeFolder,
+      resource_type: resourceType,
     });
 
     const parsedTags = typeof tags === 'string' && tags.trim()
-      ? tags.split(',').map((t) => t.trim()).filter(Boolean)
-      : Array.isArray(tags) ? tags : [];
+      ? tags.split(',').map((t) => t.trim()).filter(Boolean).slice(0, 20)
+      : Array.isArray(tags) ? tags.filter((t) => typeof t === 'string').slice(0, 20) : [];
 
     const mediaDoc = await mediaModel.create({
       url: result.url,
@@ -181,46 +172,46 @@ router.post('/upload', adminAuth, upload.single('file'), async (req, res) => {
       width: result.width || 0,
       height: result.height || 0,
       bytes: result.bytes || 0,
-      folder: result.folder || folder,
+      folder: result.folder || safeFolder,
       uploadedBy: req.adminId || req.admin?._id,
-      entityType: entityType,
-      title: title.trim(),
-      description: description.trim(),
+      entityType: typeof entityType === 'string' ? entityType : 'cms',
+      title: String(title || 'Admin Upload').trim(),
+      description: String(description || '').trim(),
       tags: parsedTags,
-      status: 'active'
+      status: 'active',
     });
 
     res.send({
       success: true,
-      message: "Media uploaded successfully to Cloudinary",
-      data: mediaDoc
+      message: 'Media uploaded successfully to Cloudinary',
+      data: mediaDoc,
     });
   } catch (error) {
     res.status(500).send({
       success: false,
-      message: error.message
+      message: error.message,
     });
   }
 });
 
-
 // =========================================================================
-// 4. UPDATE MEDIA METADATA (Title, Description, Tags)
-// Kaam: Media asset ka title, tags ya description update karta hai.
-// Kab use hota hai: Media CMS me 'Edit Details' modal me save karne par.
+// 4. UPDATE MEDIA METADATA
 // =========================================================================
-router.put('/:id', adminAuth, async (req, res) => {
+router.put('/:id', adminAuth, requireRoles(['super-admin', 'admin', 'moderator']), async (req, res) => {
   try {
-    const { title, description, entityType, tags } = req.body;
+    if (!isValidObjectId(req.params.id)) {
+      return res.status(400).send({ success: false, message: 'Invalid media ID' });
+    }
 
+    const { title, description, entityType, tags } = req.body || {};
     const updateFields = {};
-    if (title !== undefined) updateFields.title = title.trim();
-    if (description !== undefined) updateFields.description = description.trim();
-    if (entityType !== undefined) updateFields.entityType = entityType;
+    if (typeof title === 'string') updateFields.title = title.trim();
+    if (typeof description === 'string') updateFields.description = description.trim();
+    if (typeof entityType === 'string') updateFields.entityType = entityType;
     if (tags !== undefined) {
       updateFields.tags = typeof tags === 'string'
-        ? tags.split(',').map((t) => t.trim()).filter(Boolean)
-        : Array.isArray(tags) ? tags : [];
+        ? tags.split(',').map((t) => t.trim()).filter(Boolean).slice(0, 20)
+        : Array.isArray(tags) ? tags.filter((t) => typeof t === 'string').slice(0, 20) : [];
     }
 
     const updated = await mediaModel.findByIdAndUpdate(
@@ -232,35 +223,37 @@ router.put('/:id', adminAuth, async (req, res) => {
     if (!updated) {
       return res.status(404).send({
         success: false,
-        message: "Media item not found"
+        message: 'Media item not found',
       });
     }
 
     res.send({
       success: true,
-      message: "Media metadata updated successfully",
-      data: updated
+      message: 'Media metadata updated successfully',
+      data: updated,
     });
   } catch (error) {
     res.status(500).send({
       success: false,
-      message: error.message
+      message: error.message,
     });
   }
 });
 
-
 // =========================================================================
 // 5. ATOMIC REPLACE CLOUDINARY ASSET
-// Kaam: Kisi media asset ko nayi file se atomically replace karta hai.
-// Kab use hota hai: Media CMS me 'Replace File' par naya asset upload karne par.
 // =========================================================================
-router.put('/:id/replace', adminAuth, upload.single('file'), async (req, res) => {
+router.put('/:id/replace', adminAuth, requireRoles(['super-admin', 'admin', 'moderator']), upload.single('file'), async (req, res) => {
   try {
-    if (!req.file) {
+    if (!isValidObjectId(req.params.id)) {
+      return res.status(400).send({ success: false, message: 'Invalid media ID' });
+    }
+
+    const check = validateUploadedFile(req.file, ADMIN_MEDIA_MIME_TO_EXT);
+    if (!check.ok) {
       return res.status(400).send({
         success: false,
-        message: "Please provide a replacement file"
+        message: check.message,
       });
     }
 
@@ -268,16 +261,16 @@ router.put('/:id/replace', adminAuth, upload.single('file'), async (req, res) =>
     if (!existingMedia) {
       return res.status(404).send({
         success: false,
-        message: "Media record not found"
+        message: 'Media record not found',
       });
     }
 
-    const isVideo = req.file.mimetype.startsWith('video');
+    const isVideo = check.mime.startsWith('video');
     const resourceType = isVideo ? 'video' : 'image';
 
     const result = await replaceCloudinaryAsset(existingMedia.publicId, req.file.buffer, {
       folder: existingMedia.folder || 'portfolio-cms',
-      resource_type: resourceType
+      resource_type: resourceType,
     });
 
     existingMedia.url = result.url;
@@ -291,31 +284,32 @@ router.put('/:id/replace', adminAuth, upload.single('file'), async (req, res) =>
 
     res.send({
       success: true,
-      message: "Media replaced on Cloudinary successfully",
-      data: existingMedia
+      message: 'Media replaced on Cloudinary successfully',
+      data: existingMedia,
     });
   } catch (error) {
     res.status(500).send({
       success: false,
-      message: error.message
+      message: error.message,
     });
   }
 });
 
-
 // =========================================================================
-// 6. TOGGLE MEDIA STATUS (Active / Restricted)
-// Kaam: Media item ko public view se hide (restrict) ya unrestrict karta hai.
-// Kab use hota hai: Content moderation ke time inappropriate images ko hide karne ke liye.
+// 6. TOGGLE MEDIA STATUS
 // =========================================================================
-router.put('/:id/status', adminAuth, async (req, res) => {
+router.put('/:id/status', adminAuth, requireRoles(['super-admin', 'admin', 'moderator']), async (req, res) => {
   try {
-    const { status, restrictedReason = '' } = req.body;
+    if (!isValidObjectId(req.params.id)) {
+      return res.status(400).send({ success: false, message: 'Invalid media ID' });
+    }
+
+    const { status, restrictedReason = '' } = req.body || {};
 
     if (!['active', 'restricted', 'deleted'].includes(status)) {
       return res.status(400).send({
         success: false,
-        message: "Status must be 'active', 'restricted', or 'deleted'"
+        message: "Status must be 'active', 'restricted', or 'deleted'",
       });
     }
 
@@ -324,8 +318,8 @@ router.put('/:id/status', adminAuth, async (req, res) => {
       {
         $set: {
           status,
-          restrictedReason: status === 'restricted' ? restrictedReason : ''
-        }
+          restrictedReason: status === 'restricted' ? String(restrictedReason || '') : '',
+        },
       },
       { new: true }
     );
@@ -333,55 +327,54 @@ router.put('/:id/status', adminAuth, async (req, res) => {
     if (!mediaDoc) {
       return res.status(404).send({
         success: false,
-        message: "Media item not found"
+        message: 'Media item not found',
       });
     }
 
     res.send({
       success: true,
       message: `Media status changed to ${status}`,
-      data: mediaDoc
+      data: mediaDoc,
     });
   } catch (error) {
     res.status(500).send({
       success: false,
-      message: error.message
+      message: error.message,
     });
   }
 });
 
-
 // =========================================================================
-// 7. DELETE MEDIA (Cloudinary & Database)
-// Kaam: Media item ko Cloudinary storage aur MongoDB database dono se permanently delete karta hai.
-// Kab use hota hai: Media CMS me 'Delete' confirm karne par.
+// 7. DELETE MEDIA
 // =========================================================================
-router.delete('/:id', adminAuth, async (req, res) => {
+router.delete('/:id', adminAuth, requireRoles(['super-admin', 'admin']), async (req, res) => {
   try {
+    if (!isValidObjectId(req.params.id)) {
+      return res.status(400).send({ success: false, message: 'Invalid media ID' });
+    }
+
     const mediaDoc = await mediaModel.findById(req.params.id);
     if (!mediaDoc) {
       return res.status(404).send({
         success: false,
-        message: "Media item not found"
+        message: 'Media item not found',
       });
     }
 
-    // Destroy asset on Cloudinary
     if (mediaDoc.publicId) {
       await deleteFromCloudinary(mediaDoc.publicId, mediaDoc.resourceType || 'image');
     }
 
-    // Delete record from database
     await mediaModel.findByIdAndDelete(req.params.id);
 
     res.send({
       success: true,
-      message: "Media permanently deleted from Cloudinary and Database"
+      message: 'Media permanently deleted from Cloudinary and Database',
     });
   } catch (error) {
     res.status(500).send({
       success: false,
-      message: error.message
+      message: error.message,
     });
   }
 });

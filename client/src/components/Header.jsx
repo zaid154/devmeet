@@ -16,11 +16,12 @@ const Header = () => {
   const { user, isAuthenticated, logout } = useAuth();
   const { unreadNotifications } = useSocket();
   const location = useLocation();
+  const [showLangModal, setShowLangModal] = useState(false);
+  const [selectedLang, setSelectedLang] = useState('English (US)');
 
   if (isAuthenticated || location.pathname !== '/') {
     return null;
   }
-
 
   const isLandingPage = location.pathname === '/';
   const isStaff = user && ['super-admin', 'admin', 'moderator', 'support'].includes(user.role);
@@ -32,9 +33,6 @@ const Header = () => {
     { name: 'Messages', path: '/chat', icon: ChatIcon },
     { name: 'Notifications', path: '/feed', icon: BellIcon, badge: unreadNotifications }
   ];
-
-  const [showLangModal, setShowLangModal] = useState(false);
-  const [selectedLang, setSelectedLang] = useState('English (US)');
 
   const scrollTo = (id) => {
     const el = document.getElementById(id);

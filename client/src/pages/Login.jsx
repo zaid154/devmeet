@@ -110,14 +110,6 @@ const Login = ({ initialMode }) => {
     }
   };
 
-  // Quick 1-Click Demo Logins
-  const quickFill = (demoEmail, demoPw = 'Admin@123') => {
-    setIsSignup(false);
-    setEmail(demoEmail);
-    setPassword(demoPw);
-    setError('');
-  };
-
   if (loading) {
     return <SplashLoader text="Authenticating with DevMeet..." fullScreen={true} />;
   }
@@ -182,64 +174,6 @@ const Login = ({ initialMode }) => {
           </button>
         </div>
 
-        {/* Quick Demo Test Buttons */}
-        {!isSignup && (
-          <div className="mb-4 bg-gray-50 p-2.5 rounded-2xl border border-gray-200">
-            <div className="text-[10px] font-bold uppercase tracking-wider text-gray-500 mb-1.5 text-center">
-              ⚡ 1-Click Fast Test Accounts
-            </div>
-            <div className="grid grid-cols-2 gap-1.5 text-xs font-bold">
-              <button
-                type="button"
-                onClick={() => quickFill('admin@dev.com')}
-                className="bg-white hover:bg-gray-100 text-gray-900 border border-gray-300 py-1.5 px-2 rounded-xl transition-all text-left flex items-center space-x-1.5 cursor-pointer shadow-2xs"
-              >
-                <span>👑</span>
-                <div className="truncate">
-                  <span className="block text-[11px] font-bold leading-tight">Zaid (Admin)</span>
-                  <span className="block text-[9px] text-gray-400 font-mono">admin@dev.com</span>
-                </div>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => quickFill('deepika@dev.com')}
-                className="bg-white hover:bg-pink-50 text-pink-700 border border-pink-200 py-1.5 px-2 rounded-xl transition-all text-left flex items-center space-x-1.5 cursor-pointer shadow-2xs"
-              >
-                <span>👩</span>
-                <div className="truncate">
-                  <span className="block text-[11px] font-bold leading-tight">Deepika</span>
-                  <span className="block text-[9px] text-gray-400 font-mono">deepika@dev.com</span>
-                </div>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => quickFill('alia@dev.com')}
-                className="bg-white hover:bg-pink-50 text-pink-700 border border-pink-200 py-1.5 px-2 rounded-xl transition-all text-left flex items-center space-x-1.5 cursor-pointer shadow-2xs"
-              >
-                <span>👩</span>
-                <div className="truncate">
-                  <span className="block text-[11px] font-bold leading-tight">Alia</span>
-                  <span className="block text-[9px] text-gray-400 font-mono">alia@dev.com</span>
-                </div>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => quickFill('virat@dev.com')}
-                className="bg-white hover:bg-gray-100 text-gray-900 border border-gray-300 py-1.5 px-2 rounded-xl transition-all text-left flex items-center space-x-1.5 cursor-pointer shadow-2xs"
-              >
-                <span>👨</span>
-                <div className="truncate">
-                  <span className="block text-[11px] font-bold leading-tight">Virat</span>
-                  <span className="block text-[9px] text-gray-400 font-mono">virat@dev.com</span>
-                </div>
-              </button>
-            </div>
-          </div>
-        )}
-
         {/* Error Notification */}
         {error && (
           <div className="bg-red-50 border border-red-200 text-red-700 text-xs rounded-2xl p-3 mb-4 text-center font-medium">
@@ -282,7 +216,7 @@ const Login = ({ initialMode }) => {
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="admin@dev.com"
+              placeholder="you@example.com"
               className="w-full bg-[#f0f2f5] focus:bg-white border-2 border-transparent focus:border-[#1877F2] text-gray-900 px-3.5 py-2.5 rounded-xl text-xs font-semibold outline-none transition-all"
             />
           </div>
@@ -294,7 +228,7 @@ const Login = ({ initialMode }) => {
               required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="Admin@123"
+              placeholder="Enter your password"
               className="w-full bg-[#f0f2f5] focus:bg-white border-2 border-transparent focus:border-[#1877F2] text-gray-900 px-3.5 py-2.5 rounded-xl text-xs font-semibold outline-none transition-all"
             />
           </div>

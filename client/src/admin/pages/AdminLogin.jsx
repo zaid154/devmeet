@@ -3,8 +3,8 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useAdmin } from '../context/AdminContext';
 
 const AdminLogin = () => {
-  const [email, setEmail] = useState('admin@devmeet.com');
-  const [password, setPassword] = useState('Admin@12345');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const { loginAdmin } = useAdmin();
@@ -44,37 +44,6 @@ const AdminLogin = () => {
           <p className="text-xs text-slate-500 mt-1">
             Sign in with authorized staff credentials
           </p>
-        </div>
-
-        {/* Quick Demo Switcher */}
-        <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 mb-5 text-xs text-slate-600">
-          <div className="font-semibold text-slate-700 mb-1.5 flex items-center justify-between">
-            <span>Demo Credentials</span>
-            <span className="font-mono text-[11px] text-slate-500">Admin@12345</span>
-          </div>
-          <div className="grid grid-cols-3 gap-1.5 text-center">
-            <button
-              type="button"
-              onClick={() => { setEmail('admin@devmeet.com'); setPassword('Admin@12345'); }}
-              className="px-2 py-1 rounded bg-white hover:bg-slate-100 border border-slate-200 text-slate-800 font-medium cursor-pointer text-[11px]"
-            >
-              Super Admin
-            </button>
-            <button
-              type="button"
-              onClick={() => { setEmail('moderator@devmeet.com'); setPassword('Admin@12345'); }}
-              className="px-2 py-1 rounded bg-white hover:bg-slate-100 border border-slate-200 text-slate-800 font-medium cursor-pointer text-[11px]"
-            >
-              Moderator
-            </button>
-            <button
-              type="button"
-              onClick={() => { setEmail('support@devmeet.com'); setPassword('Admin@12345'); }}
-              className="px-2 py-1 rounded bg-white hover:bg-slate-100 border border-slate-200 text-slate-800 font-medium cursor-pointer text-[11px]"
-            >
-              Support
-            </button>
-          </div>
         </div>
 
         {/* Error Alert */}

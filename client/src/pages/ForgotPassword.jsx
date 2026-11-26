@@ -6,7 +6,6 @@ import { BASE_URL } from '../utils/constants';
 
 const ForgotPassword = () => {
   const [email, setEmail] = useState('');
-  const [token, setToken] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -21,10 +20,9 @@ const ForgotPassword = () => {
     try {
       const res = await axios.post(`${BASE_URL}/forgot-password`, { email: email.trim() });
       if (res.data.status) {
-        setToken(res.data.resetToken);
-        setSuccess('Password reset link generated! Click below to reset your password.');
+        setSuccess(res.data.message || 'If an account with that email exists, a password reset link has been sent to your inbox.');
       } else {
-        setError(res.data.message || 'User not found');
+        setError(res.data.message || 'Failed to send reset request');
       }
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to send reset request');
@@ -61,14 +59,9 @@ const ForgotPassword = () => {
         {success && (
           <div className="bg-emerald-500/15 border border-emerald-500/40 text-emerald-300 text-xs rounded-xl p-3 mb-4 text-center font-medium space-y-2">
             <p>{success}</p>
-            {token && (
-              <Link 
-                to={`/reset-password?token=${token}`}
-                className="inline-block bg-emerald-500 hover:bg-emerald-600 text-black font-bold px-4 py-1.5 rounded-full text-xs mt-2 transition-colors"
-              >
-                Go to Reset Page →
-              </Link>
-            )}
+            <p className="text-[11px] text-emerald-200/80">
+              Please check your email inbox (or spam folder) and click the reset link.
+            </p>
           </div>
         )}
 

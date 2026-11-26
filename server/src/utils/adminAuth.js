@@ -1,15 +1,12 @@
 const jwt = require('jsonwebtoken');
 const userModel = require('./../modal/user');
-require('dotenv').config();
+const { getJwtSecret, extractToken } = require('./securityMiddleware');
 
 const STAFF_ROLES = ['moderator', 'support', 'admin', 'super-admin'];
 
 const adminAuth = async (req, res, next) => {
     try {
-        let token = req?.cookies?.token || req?.cookies?.adminToken;
-        if (!token && req.headers.authorization) {
-            token = req.headers.authorization.replace('Bearer ', '');
-        }
+        const token = extractToken(req, true);
 
         if (!token) {
             return res.status(200).json({
@@ -19,10 +16,10 @@ const adminAuth = async (req, res, next) => {
             });
         }
 
-        const secret = process.env.JWT_PVT_KEY || process.env.JWT_SECRET || 'dev_super_secret_change_me_0123456789abcdef';
+        const secret = getJwtSecret();
         let decodeToken;
         try {
-            decodeToken = await jwt.verify(token, secret);
+            decodeToken = jwt.verify(token, secret, { algorithms: ['HS256'] });
         } catch (jwtErr) {
             return res.status(200).json({
                 status: false,
@@ -39,7 +36,9 @@ const adminAuth = async (req, res, next) => {
             });
         }
 
-        const userExist = await userModel.findById(decodeToken.userId);
+        const userExist = await userModel
+            .findById(decodeToken.userId)
+            .select('-password -resetPasswordToken -resetPasswordExpires');
 
         if (!userExist) {
             return res.status(200).json({
@@ -47,6 +46,17 @@ const adminAuth = async (req, res, next) => {
                 unauthenticated: true,
                 message: "Admin user not found.",
             });
+        }
+
+        if (userExist.passwordChangedAt && decodeToken.iat) {
+            const changedTimestamp = Math.floor(userExist.passwordChangedAt.getTime() / 1000);
+            if (decodeToken.iat < changedTimestamp) {
+                return res.status(200).json({
+                    status: false,
+                    unauthenticated: true,
+                    message: "Password was changed. Please log in again.",
+                });
+            }
         }
 
         if (!STAFF_ROLES.includes(userExist.role)) {

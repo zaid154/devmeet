@@ -13,7 +13,7 @@ const AdminTeam = () => {
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('Admin@12345');
+  const [password, setPassword] = useState('');
   const [role, setRole] = useState('moderator');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');

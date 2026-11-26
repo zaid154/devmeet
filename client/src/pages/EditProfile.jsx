@@ -255,11 +255,18 @@ const EditProfile = () => {
 
   const handleRequestVerification = async () => {
     try {
-      await axios.post(`${BASE_URL}/verify`, {}, { withCredentials: true });
-      updateUser({ isVerified: true, verificationStatus: 'approved' });
-      alert('Verification badge approved! ✓');
+      const res = await axios.post(`${BASE_URL}/verify`, {}, { withCredentials: true });
+      const nextStatus = res.data?.data?.verificationStatus || 'pending';
+      updateUser({
+        isVerified: Boolean(res.data?.data?.isVerified),
+        verificationStatus: nextStatus
+      });
+      setMsg({
+        type: 'success',
+        text: res.data?.message || 'Verification request submitted for admin review.'
+      });
     } catch (e) {
-      alert('Verification request failed');
+      setMsg({ type: 'error', text: e.response?.data?.message || 'Verification request failed' });
     }
   };
 

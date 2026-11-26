@@ -7,7 +7,10 @@ import App from './App.jsx'
 
 // Global Axios Interceptor for cross-origin JWT Authentication
 axios.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token');
+  const isAdminEndpoint = typeof config.url === 'string' && config.url.includes('/admin');
+  const token = isAdminEndpoint
+    ? (localStorage.getItem('adminToken') || localStorage.getItem('token'))
+    : localStorage.getItem('token');
   if (token) {
     config.headers = config.headers || {};
     config.headers.Authorization = `Bearer ${token}`;

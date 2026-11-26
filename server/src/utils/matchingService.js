@@ -1,5 +1,6 @@
 const connectionModel = require('../modal/connection');
 const blockModel = require('../modal/block');
+const { escapeRegex } = require('./securityMiddleware');
 
 /**
  * Standardize interest / preference string to one of: 'female', 'male', 'everyone'
@@ -132,24 +133,24 @@ async function buildDiscoveryQuery(currentUser, additionalOptions = {}) {
     }
 
     // Location / City filter
-    if (additionalOptions.location && additionalOptions.location.trim()) {
-        filter.location = new RegExp(additionalOptions.location.trim(), 'i');
+    if (typeof additionalOptions.location === 'string' && additionalOptions.location.trim()) {
+        filter.location = new RegExp(escapeRegex(additionalOptions.location.trim().slice(0, 80)), 'i');
     }
 
     // Skills filter
     if (additionalOptions.skills) {
         const skillList = Array.isArray(additionalOptions.skills)
             ? additionalOptions.skills
-            : additionalOptions.skills.split(',').map(s => s.trim()).filter(Boolean);
+            : String(additionalOptions.skills).split(',').map(s => s.trim()).filter(Boolean);
 
         if (skillList.length > 0) {
-            filter.skills = { $in: skillList };
+            filter.skills = { $in: skillList.filter(s => typeof s === 'string').slice(0, 20) };
         }
     }
 
     // General text search
-    if (additionalOptions.query && additionalOptions.query.trim()) {
-        const regex = new RegExp(additionalOptions.query.trim(), 'i');
+    if (typeof additionalOptions.query === 'string' && additionalOptions.query.trim()) {
+        const regex = new RegExp(escapeRegex(additionalOptions.query.trim().slice(0, 80)), 'i');
         const textQuery = [
             { firstName: regex },
             { lastName: regex },

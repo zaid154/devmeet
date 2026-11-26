@@ -36,8 +36,10 @@ export const SocketProvider = ({ children }) => {
       return;
     }
 
+    const token = localStorage.getItem('token');
     const newSocket = io(SOCKET_URL, {
       withCredentials: true,
+      auth: token ? { token } : undefined,
       transports: ['websocket', 'polling']
     });
 

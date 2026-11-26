@@ -7,10 +7,11 @@ const connectionModel = require('./src/modal/connection');
 const messageModel = require('./src/modal/message');
 const announcementModel = require('./src/modal/announcement');
 const dbConnect = require('./src/config/database');
+require('dotenv').config({ path: path.resolve(__dirname, '.env') });
 require('dotenv').config({ path: path.resolve(__dirname, '../.env') });
 require('dotenv').config();
 
-const frontendProfilesDir = path.resolve(__dirname, '..', 'frontend', 'public', 'profiles');
+const frontendProfilesDir = path.resolve(__dirname, '..', 'client', 'public', 'profiles');
 
 const personas = [
   { id: "virat_kohli", name: "Virat Kohli", gender: "male", age: 35, job: "Cricketer", location: "Mumbai, India", bio: "Passionate about high performance on the pitch, intense gym sessions, and healthy living. 🏏💪⚡", interests: ["Cricket", "Fitness", "Nutrition", "Travel"] },
@@ -152,29 +153,40 @@ const CONVERSATIONS_DATA = [
 
 async function seed() {
   try {
+    const adminEmail = (process.env.ADMIN_EMAIL || '').trim().toLowerCase();
+    const adminPassword = process.env.ADMIN_PASSWORD || '';
+    const adminFullName = (process.env.ADMIN_NAME || 'Platform Admin').trim();
+    const [adminFirstName, ...adminLastParts] = adminFullName.split(/\s+/);
+    const adminLastName = adminLastParts.join(' ') || 'Admin';
+
+    if (!adminEmail || !adminPassword) {
+      throw new Error('ADMIN_EMAIL and ADMIN_PASSWORD must be set in server/.env before running seed.');
+    }
+
     await dbConnect();
     console.log("Connected to MongoDB for rich chat & match seed...");
 
     // Find any existing non-admin user (e.g. user's own registered account)
+    const legacyAdminEmails = ["admin@devmeet.com", "admin@dev.com", "moderator@devmeet.com", "support@devmeet.com"];
     const existingUsers = await userModel.find({
-      email: { $nin: personas.map(p => `${p.id}@devmeet.com`).concat(["admin@devmeet.com", "zaidm1323@gmail.com"]) }
+      email: { $nin: personas.map(p => `${p.id}@devmeet.com`).concat([adminEmail], legacyAdminEmails) }
     });
 
     console.log(`Found ${existingUsers.length} existing user account(s) to attach matches and chat history to.`);
 
-    // Clear personas, connections, and messages to reseed cleanly
-    await userModel.deleteMany({ email: { $in: personas.map(p => `${p.id}@devmeet.com`) } });
+    // Remove legacy admin accounts, personas, connections, and messages to reseed cleanly
+    await userModel.deleteMany({ email: { $in: legacyAdminEmails.concat(personas.map(p => `${p.id}@devmeet.com`)) } });
     await connectionModel.deleteMany({});
     await messageModel.deleteMany({});
 
-    // Admin account
-    let adminUser = await userModel.findOne({ email: "zaidm1323@gmail.com" });
-    const adminHashed = await bcrypt.hash("Zaid@9999201255", 10);
+    // Admin account (loaded strictly from environment variables)
+    let adminUser = await userModel.findOne({ email: adminEmail });
+    const adminHashed = await bcrypt.hash(adminPassword, 10);
     if (!adminUser) {
       adminUser = await userModel.create({
-        firstName: "Mohd",
-        lastName: "Zaid",
-        email: "zaidm1323@gmail.com",
+        firstName: adminFirstName,
+        lastName: adminLastName,
+        email: adminEmail,
         password: adminHashed,
         age: 23,
         gender: "male",
@@ -190,8 +202,12 @@ async function seed() {
         accountStatus: "active"
       });
     } else {
+      adminUser.firstName = adminFirstName;
+      adminUser.lastName = adminLastName;
       adminUser.password = adminHashed;
       adminUser.role = "super-admin";
+      adminUser.isVerified = true;
+      adminUser.verificationStatus = "approved";
       adminUser.accountStatus = "active";
       await adminUser.save();
     }
