@@ -11,10 +11,10 @@ const path = require('path');
 require('dotenv').config({ path: path.resolve(__dirname, '../.env') });
 require('dotenv').config();
 
-const dbConnect = require('./src/config/database');
-const userModel = require('./src/modal/user');
-const connectionModel = require('./src/modal/connection');
-const blockModel = require('./src/modal/block');
+const dbConnect = require('./config/database');
+const userModel = require('./modal/user');
+const connectionModel = require('./modal/connection');
+const blockModel = require('./modal/block');
 const {
     getJwtSecret,
     sanitizeInput,
@@ -24,20 +24,20 @@ const {
     otpLimiter,
     uploadLimiter,
     apiLimiter,
-} = require('./src/utils/securityMiddleware');
+} = require('./utils/securityMiddleware');
 
 // Routers
-const authRouter = require('./src/router/authRouter');
-const profileRouter = require('./src/router/profileRouter');
-const requestRouter = require('./src/router/request');
-const chatRouter = require('./src/router/chatRouter');
-const notificationRouter = require('./src/router/notificationRouter');
-const blockRouter = require('./src/router/blockRouter');
-const reportRouter = require('./src/router/reportRouter');
-const adminRouter = require('./src/router/adminRouter');
-const announcementRouter = require('./src/router/announcementRouter');
-const uploadRouter = require('./src/router/uploadRouter');
-const adminMediaRouter = require('./src/router/adminMediaRouter');
+const authRouter = require('./router/authRouter');
+const profileRouter = require('./router/profileRouter');
+const requestRouter = require('./router/request');
+const chatRouter = require('./router/chatRouter');
+const notificationRouter = require('./router/notificationRouter');
+const blockRouter = require('./router/blockRouter');
+const reportRouter = require('./router/reportRouter');
+const adminRouter = require('./router/adminRouter');
+const announcementRouter = require('./router/announcementRouter');
+const uploadRouter = require('./router/uploadRouter');
+const adminMediaRouter = require('./router/adminMediaRouter');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -96,7 +96,7 @@ app.use('/api/upload', uploadLimiter);
 app.use(apiLimiter);
 
 // Serve uploaded files safely without sniffing
-app.use('/uploads', express.static(path.join(__dirname, 'uploads'), {
+app.use('/uploads', express.static(path.join(__dirname, '../uploads'), {
     maxAge: '7d',
     etag: true,
     setHeaders: (res) => {
