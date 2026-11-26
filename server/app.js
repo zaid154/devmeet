@@ -54,6 +54,15 @@ app.use(cookieParser())
 // Serve uploaded files with cache headers
 app.use('/uploads', express.static(path.join(__dirname, 'uploads'), { maxAge: '7d', etag: true }))
 
+// Health check routes
+app.get('/', (_req, res) => {
+    res.json({ status: 'ok', service: 'devmeet-server', uptime: Math.round(process.uptime()) })
+})
+
+app.get('/health', (_req, res) => {
+    res.json({ status: 'ok', service: 'devmeet-server', dbState: mongoose.connection.readyState })
+})
+
 // Mount routes
 app.use('/', authRouter)
 app.use('/', profileRouter)
